@@ -28,7 +28,7 @@
     .thumb{height:150px;border-radius:10px;background:#f3f6fb;margin-bottom:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);overflow:hidden}
     .thumb img{width:100%;height:100%;object-fit:cover;display:block}
     .name{font-weight:800;margin:6px 0 2px}
-    .meta{color:var(--muted);font-size:14px}
+    .meta{color:var(--muted);font-size:14px;line-height:1.45}
     .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
     .btn{display:inline-block;padding:8px 10px;border-radius:10px;text-decoration:none;background:var(--accent);color:#fff;font-weight:800}
     .btn.disabled{background:#d1d5db;color:#111;pointer-events:none}
@@ -159,6 +159,36 @@ function escapeHtml(s){
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
+/* ✅ 把 options 字串轉成可顯示的行 */
+function optionsToText(optionsStr){
+  // "顏色:黑=0|棕=0;版本:標準=0|加大=150"
+  if(!optionsStr) return [];
+  const groups = String(optionsStr).split(";")
+    .map(x=>x.trim())
+    .filter(Boolean);
+
+  const lines = [];
+  for(const g of groups){
+    const [nameRaw, restRaw] = g.split(":");
+    const name = (nameRaw || "").trim();
+    const rest = (restRaw || "").trim();
+    if(!name || !rest) continue;
+
+    const items = rest.split("|").map(x=>x.trim()).filter(Boolean).map(item=>{
+      const [valRaw, deltaRaw] = item.split("=");
+      const val = (valRaw || "").trim();
+      const delta = Number((deltaRaw || "0").trim() || 0);
+      if(!val) return "";
+      return delta ? `${val}（+${delta}）` : `${val}`;
+    }).filter(Boolean);
+
+    if(items.length){
+      lines.push({ name, items });
+    }
+  }
+  return lines; // [{name:"顏色", items:["黑","棕"]}, ...]
+}
+
 let PRODUCTS = [];
 let MAIN = "全部";
 let SUB = "";
@@ -204,7 +234,7 @@ function renderSubcats(tree){
 function matchesFilter(p, q){
   if(!q) return true;
   const hay = [
-    p.name, p.sku, p.search_keyword, p.search_keywords, p.category_path, p.note, p.spec
+    p.name, p.sku, p.search_keyword, p.search_keywords, p.category_path, p.note, p.spec, p.options
   ].map(x=>String(x||"").toLowerCase()).join(" ");
   return hay.includes(q.toLowerCase());
 }
@@ -233,6 +263,8 @@ function renderGrid(){
     const status = normStatus(p.status);
     const soldout = status === "sold_out";
 
+    const optLines = optionsToText(p.options || "");
+
     const card = document.createElement("div");
     card.className = "card";
 
@@ -248,6 +280,15 @@ function renderGrid(){
       </div>
 
       ${p.spec ? `<div class="meta" style="margin-top:8px">規格：${escapeHtml(p.spec)}</div>` : ""}
+
+      ${
+        optLines.length
+          ? `<div class="meta" style="margin-top:8px">
+              ${optLines.map(g => `<div>${escapeHtml(g.name)}：${g.items.map(escapeHtml).join(" ")}</div>`).join("")}
+            </div>`
+          : ""
+      }
+
       ${p.note ? `<div class="meta" style="margin-top:8px">${escapeHtml(p.note)}</div>` : ""}
 
       <div class="row">
