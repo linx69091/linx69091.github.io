@@ -47,6 +47,14 @@
   flex-wrap:wrap;
   margin-top:8px;
 }
+    .badge.price{
+  font-size:16px;
+  font-weight:800;
+  color:#0b69ff;
+  border-color:#cfe2ff;
+  background:#f1f6ff;
+}
+
     .badge.soldout{border-color:#fecaca;color:#b91c1c;background:#fff5f5}
     .badge.preorder{border-color:#fde68a;color:#92400e;background:#fffbeb}
     .statusline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
@@ -290,7 +298,7 @@ function renderGrid(){
 
       <div class="statusline">
         <span class="badge ${statusClass(status)}">${statusLabel(status)}</span>
-        <span class="badge">NT$ ${Number(p.price||0)}</span>
+        <span class="badge price">NT$ ${Number(p.price||0)}</span>
       </div>
 
       ${p.spec ? `<div class="meta" style="margin-top:8px">規格：${escapeHtml(p.spec)}</div>` : ""}
