@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>購物車 — linx69091</title>
+  <style>
+    :root{--maxw:1100px;--muted:#6b7280;--accent:#0b69ff}
+    body{font-family:"Helvetica Neue", Arial, "Noto Sans TC", sans-serif;margin:0;color:#111;background:#fff}
+    .wrap{max-width:var(--maxw);margin:28px auto;padding:20px}
+    .empty{color:var(--muted);padding:40px;border:1px dashed #eef2f7;border-radius:10px;text-align:center}
+    .list{margin-top:12px}
+    .item{display:flex;gap:12px;padding:12px;border:1px solid #f1f5f9;border-radius:10px;margin-bottom:10px;align-items:center}
+    .meta{color:var(--muted)}
+    .actions button{background:var(--accent);color:#fff;padding:6px 8px;border-radius:8px;border:0}
+    .summary{margin-top:18px;padding:12px;border-radius:10px;border:1px solid #eef2f7}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div><a href="/products.html">← 回商品列表</a></div>
+    <h2>購物車</h2>
+
+    <div id="cartArea"></div>
+
+    <div style="height:16px"></div>
+    <div style="color:var(--muted)">提示：這個購物車目前存在於你的瀏覽器(localStorage)。未串接付款，結帳會跳轉到測試表單（下階段串接 Google Forms）。</div>
+  </div>
+
+  <script>
+    function renderCart(){
+      const area = document.getElementById('cartArea');
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      if(!cart.length){
+        area.innerHTML = '<div class="empty">購物車目前是空的。可以到商品頁加入範例商品測試。</div>';
+        return;
+      }
+
+      let html = '<div class="list">';
+      let total = 0;
+      cart.forEach((it, idx) => {
+        const unit = it.unit_price || it.base_price || 0;
+        const subtotal = unit * (it.qty || 1);
+        total += subtotal;
+        html += `<div class="item">
+          <div style="width:60px;height:60px;background:#f3f6fb;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted)">圖</div>
+          <div style="flex:1">
+            <div style="font-weight:700">${it.name}</div>
+            <div class="meta">單價 ${unit}  × ${it.qty}  小計 ${subtotal}</div>
+          </div>
+          <div class="actions">
+            <button onclick="decrease(${idx})">-</button>
+            <button onclick="increase(${idx})">+</button>
+            <button onclick="removeItem(${idx})" style="margin-left:8px;background:#ddd;color:#111;border-radius:8px;padding:6px 8px;border:0">刪除</button>
+          </div>
+        </div>`;
+      });
+      html += `</div>
+        <div class="summary">
+          <div style="font-weight:700">總計：NT$ ${total}</div>
+          <div style="height:8px"></div>
+          <button onclick="checkout()" style="background:var(--accent);color:#fff;padding:10px 14px;border-radius:10px;border:0;font-weight:700">結帳（送訂單到表單）</button>
+        </div>`;
+      area.innerHTML = html;
+    }
+
+    function save(cart){
+      localStorage.setItem('cart', JSON.stringify(cart));
+      renderCart();
+    }
+    function increase(i){ const cart=JSON.parse(localStorage.getItem('cart')||'[]'); cart[i].qty++; save(cart); }
+    function decrease(i){ const cart=JSON.parse(localStorage.getItem('cart')||'[]'); if(cart[i].qty>1) cart[i].qty--; save(cart); }
+    function removeItem(i){ const cart=JSON.parse(localStorage.getItem('cart')||'[]'); cart.splice(i,1); save(cart); }
+
+    function checkout(){
+      // 暫時導向示意（之後會改為把 cart 塞進 Google Forms）
+      alert('下一步會把訂單內容塞進 Google Forms（稍後串接）。\n目前為示範流程。');
+      // location.href = '/checkout.html'  // 日後可用
+    }
+
+    renderCart();
+  </script>
+</body>
+</html>
