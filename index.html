@@ -85,5 +85,104 @@
     }
     .muted{color:var(--muted);font-size:14px}
 
-    /* --- sample*
+    /* --- sample footer --- */
+    footer{max-width:var(--maxw);margin:36px auto;padding:20px;color:var(--muted);font-size:14px;text-align:center}
 
+    /* --- responsive --- */
+    @media (max-width:880px){
+      .hero{grid-template-columns:1fr; padding:18px}
+      .nav-inner{padding:10px 14px}
+      .nav-links{display:none}
+      .mobile-toggle{display:block}
+    }
+    @media (min-width:881px){
+      .mobile-toggle{display:none}
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">LP</div>
+        <div>
+          <div class="sitename">linx69091</div>
+          <div class="muted" style="font-size:12px">乾淨、簡潔的作品入口</div>
+        </div>
+      </div>
+
+      <nav class="nav-links" aria-label="主導覽">
+        <a href="/index.html">首頁</a>
+        <a href="/products.html">作品 / 商品</a>
+        <a href="/cart.html">購物車</a>
+        <a class="cta" href="/products.html">查看商品</a>
+      </nav>
+
+      <button class="mobile-toggle" aria-expanded="false" style="background:none;border:0;padding:6px">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="#0b69ff" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="hero" role="main">
+    <section class="card">
+      <h1>歡迎，這是你的乾淨首頁</h1>
+      <p class="lead">簡潔、快速、可擴展。這裡可放作品介紹、最新公告、或直接導向你的商品頁。你現有的 GitHub Pages 可立即承載前台靜態內容與購物車前端。</p>
+
+      <div style="height:16px"></div>
+
+      <h3 style="margin-bottom:8px">如何使用（快速導引）</h3>
+      <ol style="margin-top:0;color:var(--muted)">
+        <li>點「查看商品」或進 /products.html，開始加入購物車測試。</li>
+        <li>把商品資料放在 Google Sheets（我們接下來會串）。</li>
+        <li>結帳會送到 Google Forms（不用會員、安全又省錢）。</li>
+      </ol>
+
+      <div style="height:18px"></div>
+      <a class="cta" href="/products.html">前往商品頁測試 →</a>
+    </section>
+
+    <aside class="sidebar">
+      <div class="feature card" style="padding:16px">
+        <h3>小工具</h3>
+        <p class="muted">已準備好：導覽列、極簡風格模版、響應式設計。下一步我們可以加入商品清單讀取與購物車行為。</p>
+      </div>
+
+      <div class="feature card" style="padding:16px">
+        <h3>Branding 建議</h3>
+        <p class="muted">未來如要更專業，可：綁自訂網域、放置 Logo 圖檔、或使用稍重的字體系統。</p>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    © linx69091.github.io • 建議使用桌機或平板檢視完整版型
+  </footer>
+
+  <script>
+    // 簡單 mobile toggle（只顯示/隱藏 .nav-links）
+    const toggle = document.querySelector('.mobile-toggle');
+    const links = document.querySelector('.nav-links');
+    toggle.addEventListener('click', () => {
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      if(!expanded){
+        links.style.display = 'flex';
+        links.style.position = 'absolute';
+        links.style.right = '18px';
+        links.style.top = '64px';
+        links.style.background = '#fff';
+        links.style.flexDirection = 'column';
+        links.style.padding = '10px';
+        links.style.borderRadius = '10px';
+        links.style.boxShadow = '0 8px 24px rgba(11,105,255,0.08)';
+      } else {
+        links.style.display = '';
+        links.style.position = '';
+      }
+    });
+  </script>
+</body>
+</html>
