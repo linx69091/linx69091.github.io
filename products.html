@@ -9,7 +9,7 @@
     body{font-family:"Helvetica Neue", Arial, "Noto Sans TC", sans-serif;margin:0;color:#111;background:#fff}
     a{color:inherit}
     .wrap{max-width:var(--maxw);margin:22px auto;padding:18px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
     .muted{color:var(--muted)}
     .banner{border:1px solid #eef2f7;background:#f7f9fc;border-radius:12px;padding:14px;margin:12px 0 18px}
     .banner h3{margin:0 0 6px}
@@ -32,8 +32,9 @@
     .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
     .btn{display:inline-block;padding:8px 10px;border-radius:10px;text-decoration:none;background:var(--accent);color:#fff;font-weight:800}
     .btn.disabled{background:#d1d5db;color:#111;pointer-events:none}
-    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;color:var(--muted)}
+    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;color:var(--muted);background:#fff}
     .badge.soldout{border-color:#fecaca;color:#b91c1c;background:#fff5f5}
+    .badge.preorder{border-color:#fde68a;color:#92400e;background:#fffbeb}
     .statusline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
     .footerline{margin-top:16px;color:var(--muted);font-size:13px}
     @media (max-width:520px){ .top{flex-direction:column;align-items:flex-start} }
@@ -62,11 +63,11 @@
   </div>
 
 <script>
-/* ====== 你只要改這裡 ====== */
+/* ====== 你只要改這裡（已填好）====== */
 const SHEET_ID = "1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
 const SHEET_PRODUCTS = "Products";
 const SHEET_PUBLIC = "Public";
-/* ========================= */
+/* =================================== */
 
 const gvizUrl = (sheetName) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tqx=out:json`;
@@ -112,25 +113,28 @@ function mdToHtml(md){
   return html;
 
   function inlineMd(s){
-    // **bold**
     s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    // [text](url)
     s = s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     return s;
   }
 }
 
-function normBool(v){
-  return String(v).toUpperCase() === "TRUE";
+function normBool(v){ return String(v).toUpperCase() === "TRUE"; }
+function normStatus(v){ const s = String(v || "").trim(); return s || "in_stock"; }
+
+function statusLabel(status){
+  if(status === "sold_out") return "售完";
+  if(status === "preorder") return "預購";
+  return "可購買";
 }
-function normStatus(v){
-  const s = String(v || "").trim();
-  return s || "in_stock";
+function statusClass(status){
+  if(status === "sold_out") return "soldout";
+  if(status === "preorder") return "preorder";
+  return "";
 }
 
 function buildCategoryTree(products){
-  // 由 category_path 推導：大分類 / 子分類
-  const tree = new Map(); // main -> Set(sub)
+  const tree = new Map();
   for(const p of products){
     const path = String(p.category_path || "").trim();
     if(!path) continue;
@@ -140,7 +144,6 @@ function buildCategoryTree(products){
     if(!tree.has(main)) tree.set(main, new Set());
     if(sub) tree.get(main).add(sub);
   }
-  // 固定排序：你測試想先這三個
   const preferred = ["包包","皮夾","配件"];
   const mains = Array.from(tree.keys()).sort((a,b)=>{
     const ia = preferred.indexOf(a), ib = preferred.indexOf(b);
@@ -152,15 +155,8 @@ function buildCategoryTree(products){
   return { tree, mains };
 }
 
-function getCart(){
-  return JSON.parse(localStorage.getItem("cart") || "[]");
-}
-function setCart(cart){
-  localStorage.setItem("cart", JSON.stringify(cart));
-}
-function addToCart(product){
-  // 先不做規格選擇，商品詳情頁再處理。這裡只導去詳情。
-  location.href = `/product.html?sku=${encodeURIComponent(product.sku)}`;
+function escapeHtml(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
 let PRODUCTS = [];
@@ -208,7 +204,7 @@ function renderSubcats(tree){
 function matchesFilter(p, q){
   if(!q) return true;
   const hay = [
-    p.name, p.sku, p.search_keywords, p.category_path, p.note
+    p.name, p.sku, p.search_keyword, p.search_keywords, p.category_path, p.note, p.spec
   ].map(x=>String(x||"").toLowerCase()).join(" ");
   return hay.includes(q.toLowerCase());
 }
@@ -227,6 +223,7 @@ function renderGrid(){
   const q = document.getElementById("q").value.trim();
   const list = PRODUCTS
     .filter(p => normBool(p.enabled))
+    .filter(p => normStatus(p.status) !== "hidden")   // ✅ hidden 不顯示
     .filter(p => inCategory(p))
     .filter(p => matchesFilter(p, q))
     .sort((a,b)=> Number(a.sort||9999) - Number(b.sort||9999));
@@ -244,13 +241,17 @@ function renderGrid(){
       <div class="thumb">${img || "無圖片"}</div>
       <div class="name">${escapeHtml(p.name || "")}</div>
       <div class="meta">編號：${escapeHtml(p.sku || "")}</div>
+
       <div class="statusline">
-        <span class="badge ${soldout ? "soldout": ""}">${soldout ? "售完" : "可購買"}</span>
+        <span class="badge ${statusClass(status)}">${statusLabel(status)}</span>
         <span class="badge">NT$ ${Number(p.price||0)}</span>
       </div>
+
+      ${p.spec ? `<div class="meta" style="margin-top:8px">規格：${escapeHtml(p.spec)}</div>` : ""}
       ${p.note ? `<div class="meta" style="margin-top:8px">${escapeHtml(p.note)}</div>` : ""}
+
       <div class="row">
-        <a class="btn ${soldout ? "disabled": ""}" href="/product.html?sku=${encodeURIComponent(p.sku)}">${soldout ? "已售完" : "查看 / 選規格"}</a>
+        <a class="btn ${soldout ? "disabled": ""}" href="/product.html?sku=${encodeURIComponent(p.sku)}">${soldout ? "已售完" : "查看 / 選項"}</a>
       </div>
     `;
     grid.appendChild(card);
@@ -260,25 +261,13 @@ function renderGrid(){
     list.length ? `顯示 ${list.length} 筆` : `沒有符合的商品。可試試改關鍵字或切換分類。`;
 }
 
-function escapeHtml(s){
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-
 function refreshUI(){
   const treeInfo = buildCategoryTree(PRODUCTS);
-  // tabs
-  const tabs = document.getElementById("mainTabs").querySelectorAll(".tab");
-  tabs.forEach(t=>t.classList.toggle("active", t.textContent===MAIN));
   renderSubcats(treeInfo.tree);
   renderGrid();
 }
 
 async function init(){
-  if(SHEET_ID.includes("把這裡換成你的SHEET_ID")){
-    document.getElementById("hint").textContent = "請先在 products.html 內把 SHEET_ID 換成你的 Google Sheet ID。";
-    return;
-  }
-
   const [products, pub] = await Promise.all([
     fetchSheet(SHEET_PRODUCTS),
     fetchSheet(SHEET_PUBLIC)
@@ -295,6 +284,7 @@ async function init(){
   if(bannerRow){
     const box = document.getElementById("banner");
     box.style.display = "block";
+    // Public 表請用 content_md 欄名
     box.innerHTML = `<h3>${escapeHtml(bannerRow.title || "公告")}</h3>` + mdToHtml(bannerRow.content_md || "");
   }
 
@@ -302,9 +292,7 @@ async function init(){
   renderTabs(treeInfo);
   renderSubcats(treeInfo.tree);
 
-  // search
   document.getElementById("q").addEventListener("input", ()=> renderGrid());
-
   renderGrid();
 }
 
@@ -312,3 +300,4 @@ init();
 </script>
 </body>
 </html>
+
