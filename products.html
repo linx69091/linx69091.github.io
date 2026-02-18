@@ -3,69 +3,312 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>商品列表 — linx69091</title>
+  <title>商品 / 作品 — linx69091</title>
   <style>
-    :root{--maxw:1100px;--muted:#6b7280;--accent:#0b69ff}
+    :root{--maxw:1100px;--muted:#6b7280;--accent:#0b69ff;--card:#ffffff}
     body{font-family:"Helvetica Neue", Arial, "Noto Sans TC", sans-serif;margin:0;color:#111;background:#fff}
-    .wrap{max-width:var(--maxw);margin:28px auto;padding:20px}
-    .nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-    .card{border:1px solid #eef2f7;border-radius:12px;padding:12px;background:#fff}
-    .thumb{height:140px;border-radius:8px;background:#f3f6fb;margin-bottom:8px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
-    .name{font-weight:700;margin:6px 0}
+    a{color:inherit}
+    .wrap{max-width:var(--maxw);margin:22px auto;padding:18px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+    .muted{color:var(--muted)}
+    .banner{border:1px solid #eef2f7;background:#f7f9fc;border-radius:12px;padding:14px;margin:12px 0 18px}
+    .banner h3{margin:0 0 6px}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0 14px}
+    .search{flex:1;min-width:220px}
+    input[type="search"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;outline:none}
+    input[type="search"]:focus{border-color:#bcd4ff;box-shadow:0 0 0 3px rgba(11,105,255,0.10)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:8px 10px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-weight:700}
+    .tab.active{border-color:#bcd4ff;background:#f1f6ff;color:#0b69ff}
+    .subcats{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .chip{padding:6px 10px;border-radius:999px;border:1px solid #eef2f7;background:#fff;cursor:pointer}
+    .chip.active{border-color:#bcd4ff;background:#f1f6ff;color:#0b69ff}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+    .card{border:1px solid #eef2f7;border-radius:14px;padding:12px;background:var(--card)}
+    .thumb{height:150px;border-radius:10px;background:#f3f6fb;margin-bottom:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);overflow:hidden}
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .name{font-weight:800;margin:6px 0 2px}
     .meta{color:var(--muted);font-size:14px}
-    .btn{display:inline-block;margin-top:10px;padding:8px 10px;border-radius:8px;text-decoration:none;background:var(--accent);color:#fff;font-weight:700}
+    .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
+    .btn{display:inline-block;padding:8px 10px;border-radius:10px;text-decoration:none;background:var(--accent);color:#fff;font-weight:800}
+    .btn.disabled{background:#d1d5db;color:#111;pointer-events:none}
+    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;color:var(--muted)}
+    .badge.soldout{border-color:#fecaca;color:#b91c1c;background:#fff5f5}
+    .statusline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+    .footerline{margin-top:16px;color:var(--muted);font-size:13px}
+    @media (max-width:520px){ .top{flex-direction:column;align-items:flex-start} }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="nav">
+    <div class="top">
       <div><a href="/index.html">← 回首頁</a></div>
-      <div style="color:var(--muted)">正在載入商品（測試頁）</div>
+      <div class="muted">商品 / 作品（測試版）</div>
     </div>
 
-    <h2>商品 / 作品</h2>
-    <p style="color:var(--muted)">此頁為示範：介面已預留加入購物車按鈕與規格選單。之後我們會改為從 Google Sheets 抓資料。</p>
+    <div id="banner" class="banner" style="display:none;"></div>
 
-    <div class="grid" id="productGrid">
-      <!-- sample cards -->
-      <div class="card">
-        <div class="thumb">封面圖</div>
-        <div class="name">範例商品 A</div>
-        <div class="meta">NT$ 350</div>
-        <a class="btn" href="/cart.html" onclick="addSample(event,'A',350)">加入購物車</a>
+    <div class="controls">
+      <div class="search">
+        <input id="q" type="search" placeholder="搜尋：名稱 / 編號 / 關鍵字…" />
       </div>
-
-      <div class="card">
-        <div class="thumb">封面圖</div>
-        <div class="name">範例商品 B</div>
-        <div class="meta">NT$ 480</div>
-        <a class="btn" href="/cart.html" onclick="addSample(event,'B',480)">加入購物車</a>
-      </div>
-
-      <div class="card">
-        <div class="thumb">封面圖</div>
-        <div class="name">範例商品 C</div>
-        <div class="meta">NT$ 120</div>
-        <a class="btn" href="/cart.html" onclick="addSample(event,'C',120)">加入購物車</a>
-      </div>
+      <div class="tabs" id="mainTabs"></div>
     </div>
+
+    <div id="subCats" class="subcats" style="display:none;"></div>
+
+    <div class="grid" id="grid"></div>
+    <div class="footerline" id="hint"></div>
   </div>
 
-  <script>
-    // 暫時把 sample 商品加入 localStorage 購物車，然後導到 cart 頁面
-    function addSample(e,name,price){
-      e.preventDefault();
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const id = 'S-'+name;
-      const existing = cart.find(i=>i.id===id);
-      if(existing) existing.qty += 1;
-      else cart.push({ id, name: '範例商品 '+name, base_price: price, qty: 1, selected: {}, unit_price: price });
-      localStorage.setItem('cart', JSON.stringify(cart));
-      // 跳轉到購物車
-      location.href = '/cart.html';
+<script>
+/* ====== 你只要改這裡 ====== */
+const SHEET_ID = "1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
+const SHEET_PRODUCTS = "Products";
+const SHEET_PUBLIC = "Public";
+/* ========================= */
+
+const gvizUrl = (sheetName) =>
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tqx=out:json`;
+
+async function fetchSheet(sheetName){
+  const res = await fetch(gvizUrl(sheetName), { cache: "no-store" });
+  const text = await res.text();
+  const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}")+1));
+  const cols = json.table.cols.map(c => c.label);
+  const rows = json.table.rows.map(r => {
+    const obj = {};
+    r.c.forEach((cell,i)=> obj[cols[i]] = cell ? cell.v : "");
+    return obj;
+  });
+  return rows;
+}
+
+/* 極簡 Markdown（支援：換行、列表、粗體、連結、emoji 直接顯示） */
+function mdToHtml(md){
+  if(!md) return "";
+  const esc = (s)=> String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  let lines = String(md).replace(/\r\n/g,"\n").split("\n");
+  let html = "";
+  let inList = false;
+
+  for(const raw of lines){
+    const line = esc(raw);
+
+    const listMatch = line.match(/^\s*-\s+(.*)$/);
+    if(listMatch){
+      if(!inList){ html += "<ul>"; inList = true; }
+      html += `<li>${inlineMd(listMatch[1])}</li>`;
+      continue;
+    } else if(inList){
+      html += "</ul>";
+      inList = false;
     }
-  </script>
+
+    if(line.trim()===""){ html += "<div style='height:6px'></div>"; continue; }
+    html += `<p style="margin:6px 0">${inlineMd(line)}</p>`;
+  }
+  if(inList) html += "</ul>";
+  return html;
+
+  function inlineMd(s){
+    // **bold**
+    s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    // [text](url)
+    s = s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return s;
+  }
+}
+
+function normBool(v){
+  return String(v).toUpperCase() === "TRUE";
+}
+function normStatus(v){
+  const s = String(v || "").trim();
+  return s || "in_stock";
+}
+
+function buildCategoryTree(products){
+  // 由 category_path 推導：大分類 / 子分類
+  const tree = new Map(); // main -> Set(sub)
+  for(const p of products){
+    const path = String(p.category_path || "").trim();
+    if(!path) continue;
+    const parts = path.split("/").map(x=>x.trim()).filter(Boolean);
+    const main = parts[0];
+    const sub = parts[1] || "";
+    if(!tree.has(main)) tree.set(main, new Set());
+    if(sub) tree.get(main).add(sub);
+  }
+  // 固定排序：你測試想先這三個
+  const preferred = ["包包","皮夾","配件"];
+  const mains = Array.from(tree.keys()).sort((a,b)=>{
+    const ia = preferred.indexOf(a), ib = preferred.indexOf(b);
+    if(ia===-1 && ib===-1) return a.localeCompare(b,"zh-Hant");
+    if(ia===-1) return 1;
+    if(ib===-1) return -1;
+    return ia-ib;
+  });
+  return { tree, mains };
+}
+
+function getCart(){
+  return JSON.parse(localStorage.getItem("cart") || "[]");
+}
+function setCart(cart){
+  localStorage.setItem("cart", JSON.stringify(cart));
+}
+function addToCart(product){
+  // 先不做規格選擇，商品詳情頁再處理。這裡只導去詳情。
+  location.href = `/product.html?sku=${encodeURIComponent(product.sku)}`;
+}
+
+let PRODUCTS = [];
+let MAIN = "全部";
+let SUB = "";
+
+function renderTabs({tree, mains}){
+  const tabs = document.getElementById("mainTabs");
+  tabs.innerHTML = "";
+  const all = ["全部", ...mains];
+  for(const t of all){
+    const btn = document.createElement("button");
+    btn.className = "tab" + (t===MAIN ? " active": "");
+    btn.textContent = t;
+    btn.onclick = ()=>{
+      MAIN = t;
+      SUB = "";
+      refreshUI();
+    };
+    tabs.appendChild(btn);
+  }
+}
+
+function renderSubcats(tree){
+  const box = document.getElementById("subCats");
+  if(MAIN==="全部"){ box.style.display="none"; box.innerHTML=""; return; }
+  const subs = Array.from(tree.get(MAIN) || []).sort((a,b)=>a.localeCompare(b,"zh-Hant"));
+  if(!subs.length){ box.style.display="none"; box.innerHTML=""; return; }
+
+  box.style.display = "flex";
+  box.innerHTML = "";
+  const all = ["全部", ...subs];
+  for(const s of all){
+    const chip = document.createElement("button");
+    chip.className = "chip" + ((s==="全部" ? "" : s)===SUB ? " active":"");
+    chip.textContent = s;
+    chip.onclick = ()=>{
+      SUB = (s==="全部") ? "" : s;
+      refreshUI();
+    };
+    box.appendChild(chip);
+  }
+}
+
+function matchesFilter(p, q){
+  if(!q) return true;
+  const hay = [
+    p.name, p.sku, p.search_keywords, p.category_path, p.note
+  ].map(x=>String(x||"").toLowerCase()).join(" ");
+  return hay.includes(q.toLowerCase());
+}
+
+function inCategory(p){
+  if(MAIN==="全部") return true;
+  const path = String(p.category_path||"");
+  const parts = path.split("/").map(x=>x.trim()).filter(Boolean);
+  if(parts[0] !== MAIN) return false;
+  if(!SUB) return true;
+  return (parts[1] || "") === SUB;
+}
+
+function renderGrid(){
+  const grid = document.getElementById("grid");
+  const q = document.getElementById("q").value.trim();
+  const list = PRODUCTS
+    .filter(p => normBool(p.enabled))
+    .filter(p => inCategory(p))
+    .filter(p => matchesFilter(p, q))
+    .sort((a,b)=> Number(a.sort||9999) - Number(b.sort||9999));
+
+  grid.innerHTML = "";
+  for(const p of list){
+    const status = normStatus(p.status);
+    const soldout = status === "sold_out";
+
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const img = p.image_url ? `<img src="${p.image_url}" alt="${escapeHtml(p.name)}">` : "";
+    card.innerHTML = `
+      <div class="thumb">${img || "無圖片"}</div>
+      <div class="name">${escapeHtml(p.name || "")}</div>
+      <div class="meta">編號：${escapeHtml(p.sku || "")}</div>
+      <div class="statusline">
+        <span class="badge ${soldout ? "soldout": ""}">${soldout ? "售完" : "可購買"}</span>
+        <span class="badge">NT$ ${Number(p.price||0)}</span>
+      </div>
+      ${p.note ? `<div class="meta" style="margin-top:8px">${escapeHtml(p.note)}</div>` : ""}
+      <div class="row">
+        <a class="btn ${soldout ? "disabled": ""}" href="/product.html?sku=${encodeURIComponent(p.sku)}">${soldout ? "已售完" : "查看 / 選規格"}</a>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+
+  document.getElementById("hint").textContent =
+    list.length ? `顯示 ${list.length} 筆` : `沒有符合的商品。可試試改關鍵字或切換分類。`;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function refreshUI(){
+  const treeInfo = buildCategoryTree(PRODUCTS);
+  // tabs
+  const tabs = document.getElementById("mainTabs").querySelectorAll(".tab");
+  tabs.forEach(t=>t.classList.toggle("active", t.textContent===MAIN));
+  renderSubcats(treeInfo.tree);
+  renderGrid();
+}
+
+async function init(){
+  if(SHEET_ID.includes("把這裡換成你的SHEET_ID")){
+    document.getElementById("hint").textContent = "請先在 products.html 內把 SHEET_ID 換成你的 Google Sheet ID。";
+    return;
+  }
+
+  const [products, pub] = await Promise.all([
+    fetchSheet(SHEET_PRODUCTS),
+    fetchSheet(SHEET_PUBLIC)
+  ]);
+
+  PRODUCTS = products;
+
+  // banner
+  const bannerRow = pub
+    .filter(r => normBool(r.enabled))
+    .sort((a,b)=> Number(a.sort||9999) - Number(b.sort||9999))
+    .find(r => String(r.key).trim() === "products_banner");
+
+  if(bannerRow){
+    const box = document.getElementById("banner");
+    box.style.display = "block";
+    box.innerHTML = `<h3>${escapeHtml(bannerRow.title || "公告")}</h3>` + mdToHtml(bannerRow.content_md || "");
+  }
+
+  const treeInfo = buildCategoryTree(PRODUCTS);
+  renderTabs(treeInfo);
+  renderSubcats(treeInfo.tree);
+
+  // search
+  document.getElementById("q").addEventListener("input", ()=> renderGrid());
+
+  renderGrid();
+}
+
+init();
+</script>
 </body>
 </html>
-
