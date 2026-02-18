@@ -28,6 +28,7 @@
     .btn.secondary{background:#111827}
     .btn.disabled{background:#d1d5db;color:#111;cursor:not-allowed}
     .note{color:var(--muted);white-space:pre-wrap}
+    .specText{font-weight:800}
     @media (max-width:900px){ .grid{grid-template-columns:1fr} .thumb{height:300px} }
   </style>
 </head>
@@ -57,6 +58,11 @@
 
         <div class="line"></div>
 
+        <div class="muted">規格</div>
+        <div class="specText" id="specText">—</div>
+
+        <div class="line"></div>
+
         <div class="muted">備註</div>
         <div class="note" id="note">—</div>
       </section>
@@ -70,7 +76,7 @@
 
         <div class="line"></div>
 
-        <div id="specArea"></div>
+        <div id="optionsArea"></div>
 
         <label for="qty">數量</label>
         <input id="qty" type="number" min="1" value="1" />
@@ -83,7 +89,7 @@
 
         <div style="height:12px"></div>
         <div class="muted" style="font-size:13px">
-          提示：售完商品會禁用加入購物車。規格加價會計入總價。
+          規格（spec）是文字說明；若有 options 才會出現可選項並計入加價。
         </div>
       </aside>
     </div>
@@ -112,22 +118,17 @@ async function fetchSheet(sheetName){
   return rows;
 }
 
-function qs(name){
-  return new URLSearchParams(location.search).get(name) || "";
-}
+function qs(name){ return new URLSearchParams(location.search).get(name) || ""; }
 function normBool(v){ return String(v).toUpperCase() === "TRUE"; }
-function normStatus(v){
-  const s = String(v||"").trim();
-  return s || "in_stock";
-}
+function normStatus(v){ const s = String(v||"").trim(); return s || "in_stock"; }
 function escapeHtml(s){
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-function parseSpec(specStr){
-  // "顏色:黑=0|棕=0;版本:標準=0|加大=150"
-  if(!specStr) return [];
-  return String(specStr).split(";").map(g=>{
+function parseOptions(optionsStr){
+  // options: "顏色:黑=0|棕=0;版本:標準=0|加大=150"
+  if(!optionsStr) return [];
+  return String(optionsStr).split(";").map(g=>{
     const [name, rest] = g.split(":");
     const values = (rest||"").split("|").map(x=>{
       const [value, delta] = x.split("=");
@@ -137,15 +138,11 @@ function parseSpec(specStr){
   }).filter(g=>g.name && g.values.length);
 }
 
-function getCart(){
-  return JSON.parse(localStorage.getItem("cart") || "[]");
-}
-function setCart(cart){
-  localStorage.setItem("cart", JSON.stringify(cart));
-}
+function getCart(){ return JSON.parse(localStorage.getItem("cart") || "[]"); }
+function setCart(cart){ localStorage.setItem("cart", JSON.stringify(cart)); }
 
 let PRODUCT = null;
-let SPEC_DEF = [];
+let OPTIONS_DEF = [];
 let SELECTED = {}; // name -> {value, delta}
 
 function calcUnitPrice(){
@@ -165,22 +162,22 @@ function renderPrice(){
   document.getElementById("priceText").textContent = `NT$ ${total}`;
   const detail = [];
   detail.push(`基礎價 ${base}`);
-  if(delta) detail.push(`規格加價 ${delta}`);
+  if(delta) detail.push(`選項加價 ${delta}`);
   detail.push(`單價 ${unit} × ${qty}`);
   document.getElementById("priceDetail").textContent = detail.join("  ·  ");
 }
 
-function renderSpec(){
-  const area = document.getElementById("specArea");
+function renderOptions(){
+  const area = document.getElementById("optionsArea");
   area.innerHTML = "";
 
-  if(!SPEC_DEF.length){
-    area.innerHTML = `<div class="muted">規格：無</div>`;
+  if(!OPTIONS_DEF.length){
+    area.innerHTML = `<div class="muted">可選項：無</div>`;
     return;
   }
 
-  for(const group of SPEC_DEF){
-    const id = `spec_${group.name}`;
+  for(const group of OPTIONS_DEF){
+    const id = `opt_${group.name}`;
     const label = document.createElement("label");
     label.setAttribute("for", id);
     label.textContent = group.name;
@@ -240,9 +237,8 @@ function addCurrentToCart(goCart){
   const { unit } = calcUnitPrice();
 
   const cart = getCart();
-  // same sku + same selected spec considered same line item
-  const specKey = Object.keys(SELECTED).sort().map(k=>`${k}=${SELECTED[k].value}`).join("|");
-  const lineId = `${PRODUCT.sku}__${specKey}`;
+  const optKey = Object.keys(SELECTED).sort().map(k=>`${k}=${SELECTED[k].value}`).join("|");
+  const lineId = `${PRODUCT.sku}__${optKey}`;
 
   const existing = cart.find(i => i.line_id === lineId);
   if(existing){
@@ -253,10 +249,11 @@ function addCurrentToCart(goCart){
       sku: PRODUCT.sku,
       name: PRODUCT.name,
       category_path: PRODUCT.category_path || "",
+      spec_text: PRODUCT.spec || "",          // ✅ 純文字規格
+      options_selected: SELECTED,             // ✅ 可選項（若有）
       base_price: Number(PRODUCT.price || 0),
       unit_price: Number(unit || 0),
       qty,
-      selected: SELECTED,
       image_url: PRODUCT.image_url || ""
     });
   }
@@ -274,9 +271,8 @@ async function init(){
   }
 
   const products = await fetchSheet(SHEET_PRODUCTS);
-
-  // enabled TRUE + sku match
   const p = products.find(x => String(x.sku).trim() === sku);
+
   if(!p || !normBool(p.enabled)){
     document.getElementById("loading").textContent = `找不到商品：${sku}（可能未上架）`;
     return;
@@ -285,7 +281,6 @@ async function init(){
   PRODUCT = p;
   document.title = `${PRODUCT.name} — 商品詳情`;
 
-  // fill UI
   const imgHtml = PRODUCT.image_url
     ? `<img src="${PRODUCT.image_url}" alt="${escapeHtml(PRODUCT.name)}">`
     : "";
@@ -294,12 +289,14 @@ async function init(){
   document.getElementById("skuBadge").textContent = `編號：${PRODUCT.sku || ""}`;
   document.getElementById("catBadge").textContent = `分類：${PRODUCT.category_path || "—"}`;
   document.getElementById("note").textContent = PRODUCT.note ? String(PRODUCT.note) : "—";
+  document.getElementById("specText").textContent = PRODUCT.spec ? String(PRODUCT.spec) : "—";
 
   const status = normStatus(PRODUCT.status);
   setStatusUI(status);
 
-  SPEC_DEF = parseSpec(PRODUCT.spec || "");
-  renderSpec();
+  // ✅ options：只有有填才出選單，不影響 spec
+  OPTIONS_DEF = parseOptions(PRODUCT.options || "");
+  renderOptions();
 
   document.getElementById("qty").addEventListener("input", renderPrice);
   renderPrice();
