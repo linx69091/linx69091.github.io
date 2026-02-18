@@ -32,7 +32,21 @@
     .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
     .btn{display:inline-block;padding:8px 10px;border-radius:10px;text-decoration:none;background:var(--accent);color:#fff;font-weight:800}
     .btn.disabled{background:#d1d5db;color:#111;pointer-events:none}
-    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;color:var(--muted);background:#fff}
+    .badge{
+  font-size:14px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-weight:700;
+}
+.statusline{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
     .badge.soldout{border-color:#fecaca;color:#b91c1c;background:#fff5f5}
     .badge.preorder{border-color:#fde68a;color:#92400e;background:#fffbeb}
     .statusline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
@@ -284,7 +298,7 @@ function renderGrid(){
       ${
         optLines.length
           ? `<div class="meta" style="margin-top:8px">
-              ${optLines.map(g => `<div>${escapeHtml(g.name)}：${g.items.map(escapeHtml).join(" ")}</div>`).join("")}
+              ${optLines.map(g => `<div>${escapeHtml(g.name)}：${g.items.map(escapeHtml).join("、")}</div>`).join("")}
             </div>`
           : ""
       }
