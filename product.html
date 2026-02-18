@@ -17,8 +17,9 @@
     .thumb img{width:100%;height:100%;object-fit:cover;display:block}
     h1{margin:10px 0 6px;font-size:28px;letter-spacing:-0.02em}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;color:var(--muted)}
+    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;color:var(--muted);background:#fff}
     .badge.soldout{border-color:#fecaca;color:#b91c1c;background:#fff5f5}
+    .badge.preorder{border-color:#fde68a;color:#92400e;background:#fffbeb}
     .line{height:1px;background:#eef2f7;margin:12px 0}
     label{display:block;font-weight:800;margin:10px 0 6px}
     select,input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;outline:none;background:#fff}
@@ -89,7 +90,7 @@
 
         <div style="height:12px"></div>
         <div class="muted" style="font-size:13px">
-          規格（spec）是文字說明；若有 options 才會出現可選項並計入加價。
+          spec 是文字規格；options 才是可選項並計入加價。
         </div>
       </aside>
     </div>
@@ -193,7 +194,6 @@ function renderOptions(){
       sel.appendChild(o);
     }
 
-    // default first option
     const first = group.values[0];
     SELECTED[group.name] = { value: first.value, delta: first.delta };
 
@@ -219,8 +219,15 @@ function setStatusUI(status){
     buyBtn.className = "btn secondary disabled";
     addBtn.disabled = true;
     buyBtn.disabled = true;
+  }else if(status === "preorder"){
+    badge.textContent = "預購";
+    badge.className = "badge preorder";
+    addBtn.className = "btn";
+    buyBtn.className = "btn secondary";
+    addBtn.disabled = false;
+    buyBtn.disabled = false;
   }else{
-    badge.textContent = (status === "preorder") ? "預購" : "可購買";
+    badge.textContent = "可購買";
     badge.className = "badge";
     addBtn.className = "btn";
     buyBtn.className = "btn secondary";
@@ -249,8 +256,8 @@ function addCurrentToCart(goCart){
       sku: PRODUCT.sku,
       name: PRODUCT.name,
       category_path: PRODUCT.category_path || "",
-      spec_text: PRODUCT.spec || "",          // ✅ 純文字規格
-      options_selected: SELECTED,             // ✅ 可選項（若有）
+      spec_text: PRODUCT.spec || "",
+      options_selected: SELECTED,
       base_price: Number(PRODUCT.price || 0),
       unit_price: Number(unit || 0),
       qty,
@@ -273,7 +280,8 @@ async function init(){
   const products = await fetchSheet(SHEET_PRODUCTS);
   const p = products.find(x => String(x.sku).trim() === sku);
 
-  if(!p || !normBool(p.enabled)){
+  // ✅ hidden 也當作不可見
+  if(!p || !normBool(p.enabled) || normStatus(p.status)==="hidden"){
     document.getElementById("loading").textContent = `找不到商品：${sku}（可能未上架）`;
     return;
   }
@@ -291,10 +299,8 @@ async function init(){
   document.getElementById("note").textContent = PRODUCT.note ? String(PRODUCT.note) : "—";
   document.getElementById("specText").textContent = PRODUCT.spec ? String(PRODUCT.spec) : "—";
 
-  const status = normStatus(PRODUCT.status);
-  setStatusUI(status);
+  setStatusUI(normStatus(PRODUCT.status));
 
-  // ✅ options：只有有填才出選單，不影響 spec
   OPTIONS_DEF = parseOptions(PRODUCT.options || "");
   renderOptions();
 
@@ -312,4 +318,3 @@ init();
 </script>
 </body>
 </html>
-
