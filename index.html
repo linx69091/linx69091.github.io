@@ -1,13 +1,89 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>首頁</title>
-</head>
-<body>
-  <h1>It works.</h1>
-  <p>linx69091.github.io 已上線。</p>
-</body>
-</html>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>首頁 — linx69091</title>
+  <style>
+    /* --- Reset & base --- */
+    :root{
+      --bg:#ffffff;
+      --muted:#6b7280;
+      --accent:#0b69ff;
+      --card:#f7f9fc;
+      --maxw:1100px;
+      font-family: "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:#111827;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      line-height:1.5;
+    }
+
+    /* --- nav --- */
+    .nav{
+      width:100%;
+      border-bottom:1px solid #eef2f7;
+      position:sticky;
+      top:0;
+      background:linear-gradient(0deg, rgba(255,255,255,0.85), rgba(255,255,255,0.85));
+      backdrop-filter: blur(6px);
+      z-index:50;
+    }
+    .nav-inner{
+      max-width:var(--maxw);
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 20px;
+    }
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{
+      width:40px;height:40px;border-radius:8px;
+      background:linear-gradient(135deg,var(--accent),#6aa8ff);
+      display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;
+      font-size:18px;
+    }
+    .sitename{font-weight:700;font-size:18px}
+    .nav-links{display:flex;gap:18px;align-items:center}
+    .nav-links a{color:var(--muted);text-decoration:none;font-weight:600}
+    .nav-links a:hover{color:var(--accent)}
+    .cta{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:700}
+
+    /* --- hero --- */
+    .hero{
+      max-width:var(--maxw);
+      margin:36px auto 20px;
+      padding:28px 20px;
+      display:grid;
+      grid-template-columns:1fr 360px;
+      gap:28px;
+      align-items:start;
+    }
+    .hero .card{
+      background:var(--card);
+      border-radius:12px;padding:28px;
+      box-shadow:0 6px 18px rgba(11,105,255,0.04);
+    }
+    h1{margin:0 0 8px;font-size:34px;letter-spacing:-0.02em}
+    p.lead{margin:0;color:var(--muted)}
+
+    /* --- sidebar --- */
+    .sidebar h3{margin:0 0 12px}
+    .feature{
+      background:#fff;border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid #eef2f7;
+    }
+    .muted{color:var(--muted);font-size:14px}
+
+    /* --- sample*
 
