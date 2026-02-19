@@ -15,7 +15,6 @@
       --blue-weak:#e8f1ff;
       --red:#d93025;
       --red-weak:#ffe9e9;
-      --radius:16px;
     }
     *{box-sizing:border-box}
     body{
@@ -31,7 +30,6 @@
       padding:0 18px;
     }
 
-    /* top */
     .topbar{
       display:flex;
       align-items:center;
@@ -56,24 +54,22 @@
       font-size:20px;
       letter-spacing:.5px;
     }
-    /* ✅ 公告換行：這行是重點 */
+    /* ✅ 公告內容換行 */
     #bannerContent{
       white-space:pre-line;
       line-height:1.7;
       color:#111827;
+      min-height:1px;
     }
     #bannerContent ul{margin:8px 0 0 20px}
     #bannerContent li{margin:4px 0}
 
-    /* search + categories */
-    .row{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      margin:10px 0 14px;
+    /* ✅ 搜尋在上、分類在下 */
+    .searchRow{
+      margin:10px 0 10px;
     }
     .search{
-      flex:1;
+      width:100%;
       background:var(--card);
       border:1px solid var(--line);
       border-radius:14px;
@@ -86,12 +82,14 @@
       font-size:15px;
       background:transparent;
     }
+    .catsRow{
+      margin:0 0 14px;
+    }
     .cats{
       display:flex;
       gap:8px;
       flex-wrap:wrap;
       justify-content:flex-end;
-      min-width:260px;
     }
     .chip{
       border:1px solid var(--line);
@@ -110,7 +108,7 @@
       color:#1a5bd8;
     }
 
-    /* grid: 你現在一排 5 個就維持，這裡用 auto-fit */
+    /* grid：不動你的欄數策略 */
     .grid{
       display:grid;
       gap:16px;
@@ -168,25 +166,27 @@
       gap:6px;
       padding:6px 10px;
       border-radius:999px;
-      font-size:14px;
-      font-weight:900;
       border:1px solid var(--line);
       background:#fff;
       white-space:nowrap;
+      font-weight:900;
     }
     .badge.stock{
       background:var(--blue-weak);
       border-color:#bcd4ff;
       color:#1a5bd8;
+      /* ✅ 3. 可購買縮小 */
+      font-size:12px;
+      padding:4px 9px;
     }
 
-    /* 價格：維持你原本那種大小感，特價不放大 */
     .priceRow{
       display:flex;
       align-items:center;
       gap:10px;
       flex-wrap:wrap;
     }
+    /* ✅ 4. 基礎價縮小 */
     .price{
       display:inline-flex;
       align-items:center;
@@ -196,14 +196,14 @@
       border:1px solid #bcd4ff;
       background:var(--blue-weak);
       color:#1a5bd8;
-      font-size:20px; /* 原本那顆 NT$ 333 的大小 */
+      font-size:16px;   /* 原本 20 -> 16 */
       line-height:1;
     }
     .oldPrice{
       color:#9ca3af;
       text-decoration:line-through;
       font-weight:900;
-      font-size:14px;
+      font-size:13px;
       padding:0;
       border:none;
       background:transparent;
@@ -212,7 +212,7 @@
       border:1px solid #ffb4b4;
       background:var(--red-weak);
       color:var(--red);
-      font-size:20px; /* ✅ 跟原本 price 同大小，不放大 */
+      font-size:16px;   /* 跟基礎價同級 */
       line-height:1;
     }
 
@@ -259,15 +259,19 @@
       <div id="bannerContent"></div>
     </div>
 
-    <div class="row">
+    <!-- ✅ 搜尋獨立一行 -->
+    <div class="searchRow">
       <div class="search">
         <input id="q" placeholder="搜尋：名稱 / 編號 / 關鍵字..." />
       </div>
+    </div>
+
+    <!-- ✅ 分類獨立一行 -->
+    <div class="catsRow">
       <div class="cats" id="cats"></div>
     </div>
 
     <div class="grid" id="grid"></div>
-
     <div class="foot" id="count"></div>
   </div>
 
@@ -285,47 +289,43 @@
   function isTrue(v){
     return String(v ?? "").trim().toUpperCase() === "TRUE";
   }
-
   function safeText(v){
     return String(v ?? "").trim();
   }
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
 
-  // ✅ 公告：以 key=products_banner 為主，找不到就抓第一筆 enabled=TRUE
+  // ✅ 公告：只看 enabled=TRUE，優先 key=products_banner
   async function loadBanner(){
     const el = document.getElementById("bannerContent");
-    el.textContent = ""; // reset
+    el.textContent = "";
 
     let rows = [];
     try{
       const res = await fetch(BASE + "/Public");
       rows = await res.json();
     }catch(e){
-      el.textContent = "";
       return;
     }
 
-    // 忽略表頭/範例列：只看 enabled=TRUE
     const enabledRows = rows.filter(r => isTrue(r.enabled));
-
     const bannerRow =
       enabledRows.find(r => safeText(r.key) === "products_banner")
       || enabledRows[0];
 
     const content = safeText(bannerRow?.content);
+    if(!content) return;
 
-    if(!content){
-      el.textContent = "";
-      return;
-    }
-
-    // 簡單處理：支援換行、- 開頭變成項目符號
-    // 你的 emoji 會原樣保留
     const lines = content.split(/\r?\n/);
+    const listCount = lines.filter(l => l.trim().startsWith("-")).length;
 
-    // 如果看起來像清單（很多行用 - 開頭），就轉成 <ul>
-    const isList = lines.filter(l => l.trim().startsWith("-")).length >= 2;
-
-    if(isList){
+    if(listCount >= 2){
       const head = [];
       const items = [];
       for(const line of lines){
@@ -344,22 +344,11 @@
       }
       el.innerHTML = html;
     }else{
-      // 保留換行
-      el.textContent = content;
+      el.textContent = content; // white-space:pre-line 會處理換行
     }
   }
 
-  function escapeHtml(s){
-    return String(s)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#39;");
-  }
-
-  // ✅ options：每個群組換行，顯示「、」分隔
-  // 例：顏色:黑=0|棕=0;版本:標準=0|加大=150
+  // options 顯示（保持你原本需求，不動）
   function optionsToHtml(text){
     const raw = safeText(text);
     if(!raw) return "";
@@ -388,12 +377,9 @@
         lines.push(`<div class="line">${escapeHtml(label)}：${items.join("、")}</div>`);
       }
     }
-
     return lines.join("");
   }
 
-  // ✅ 分類：優先讀 Categories sheet
-  // 如果 Categories 沒資料，就從 products.category_path 自動生出
   async function loadCategories(){
     let rows = [];
     try{
@@ -404,8 +390,6 @@
     }
 
     const enabled = rows.filter(r => isTrue(r.enabled));
-
-    // 常見欄位名容錯：name/title、path/category_path/key
     const cats = enabled.map(r => ({
       name: safeText(r.name || r.title || r.category || r.label),
       path: safeText(r.path || r.category_path || r.key || r.value),
@@ -413,7 +397,6 @@
     })).filter(c => c.name && c.path);
 
     cats.sort((a,b)=>a.sort-b.sort);
-
     state.categories = cats;
   }
 
@@ -421,19 +404,20 @@
     const res = await fetch(BASE + "/Products");
     const rows = await res.json();
 
-    // 只認 enabled=TRUE，且略過表頭/範例列（enabled 不是 TRUE 就不會進來）
-    state.products = rows.filter(r => isTrue(r.enabled)).map(r => ({
-      sku: safeText(r.sku),
-      name: safeText(r.name),
-      category: safeText(r.category_path),
-      spec: safeText(r.spec),
-      options: safeText(r.options),
-      note: safeText(r.note),
-      price: Number(r.price || 0),
-      currency: safeText(r.currency || "TWD"),
-      price_override: Number(r.price_override || 0),
-      image_url: safeText(r.image_url || r.image || "")
-    }));
+    state.products = rows
+      .filter(r => isTrue(r.enabled))
+      .map(r => ({
+        sku: safeText(r.sku),
+        name: safeText(r.name),
+        category: safeText(r.category_path),
+        spec: safeText(r.spec),
+        options: safeText(r.options),
+        note: safeText(r.note),
+        price: Number(r.price || 0),
+        currency: safeText(r.currency || "TWD"),
+        price_override: Number(r.price_override || 0),
+        image_url: safeText(r.image_url || r.image || "")
+      }));
   }
 
   function buildCategoryUI(){
@@ -441,8 +425,6 @@
     el.innerHTML = "";
 
     const chips = [];
-
-    // 先放「全部」
     chips.push({name:"全部", path:"__ALL__"});
 
     if(state.categories.length){
@@ -450,7 +432,6 @@
         chips.push({name:c.name, path:c.path});
       }
     }else{
-      // 沒 Categories sheet 就用 products 的 category_path 生
       const set = new Set(state.products.map(p=>p.category).filter(Boolean));
       for(const path of Array.from(set)){
         chips.push({name:path, path});
@@ -478,8 +459,6 @@
       if(!hay.includes(q)) return false;
     }
     if(state.activeCat !== "全部"){
-      // activeCat 是顯示文字；若 Categories 有設定，顯示名可能不是 path
-      // 所以這裡：若 Categories 有資料，找對應 path；找不到就直接用名稱比對
       if(state.categories.length){
         const target = state.categories.find(c => c.name === state.activeCat);
         const path = target?.path || state.activeCat;
@@ -545,14 +524,12 @@
           <button class="btn" onclick="location.href='./product.html?sku=${encodeURIComponent(p.sku)}'">查看 / 選項</button>
         </div>
       `;
-
       grid.appendChild(card);
     }
 
     document.getElementById("count").textContent = `顯示 ${list.length} 筆`;
   }
 
-  // search
   document.getElementById("q").addEventListener("input", (e)=>{
     state.q = e.target.value || "";
     render();
@@ -566,5 +543,6 @@
 </script>
 </body>
 </html>
+
 
 
