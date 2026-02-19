@@ -324,7 +324,7 @@ function render(){
 
       <div class="statusline">
         <span class="badge ${statusClass(status)}">${statusLabel(status)}</span>
-        <span class="badge price">NT$ ${Number(p.price || 0)}</span>
+        <span class="badge price">NT$ ${Number(p.price_override || p.price || 0)}</span>
       </div>
 
       ${p.spec ? `<div class="meta">規格：${escapeHtml(p.spec)}</div>` : ""}
