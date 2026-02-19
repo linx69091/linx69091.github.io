@@ -13,6 +13,48 @@
       --soft:#f7f9fc;
       --accent:#0b69ff;
       --danger:#d11;
+
+      /* =========================
+   價格樣式最終穩定覆蓋版
+   不改卡片寬度、不撐版型
+   ========================= */
+
+/* 基礎價（藍色 NT$） */
+.badge.price{
+  font-size: 15px !important;      /* 原本接近這個大小 */
+  padding: 6px 10px !important;
+  line-height: 1 !important;
+  font-weight: 600 !important;
+}
+
+/* 原價（刪除線） */
+.priceOld{
+  font-size: 13px !important;
+  color: #888 !important;
+  text-decoration: line-through !important;
+  margin-right: 6px !important;
+}
+
+/* 特價（紅色，不放大） */
+.priceSpecial{
+  font-size: 15px !important;      /* 和基礎價完全一致 */
+  padding: 6px 10px !important;
+  font-weight: 700 !important;
+  background: #fff0f0 !important;
+  color: #e53935 !important;
+  border: 1px solid #ffcaca !important;
+  border-radius: 20px !important;
+  white-space: nowrap !important;
+}
+
+/* 防止價格撐開卡片 */
+.priceWrap{
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
     }
     *{box-sizing:border-box}
     body{
