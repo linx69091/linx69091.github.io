@@ -147,7 +147,7 @@ let OPTIONS_DEF = [];
 let SELECTED = {}; // name -> {value, delta}
 
 function calcUnitPrice(){
-  const base = Number(PRODUCT.price || 0);
+  const base = Number(p.price_override || p.price || 0);
   let delta = 0;
   for(const k of Object.keys(SELECTED)){
     delta += Number(SELECTED[k].delta || 0);
