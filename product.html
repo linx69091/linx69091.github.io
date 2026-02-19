@@ -1,320 +1,492 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>商品詳情</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>商品 / 作品</title>
+
   <style>
-    :root{--maxw:1100px;--muted:#6b7280;--accent:#0b69ff;--card:#ffffff;--bg:#fff}
-    body{font-family:"Helvetica Neue", Arial, "Noto Sans TC", sans-serif;margin:0;color:#111;background:var(--bg)}
-    a{color:inherit}
-    .wrap{max-width:var(--maxw);margin:22px auto;padding:18px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
-    .muted{color:var(--muted)}
-    .grid{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
-    .card{border:1px solid #eef2f7;border-radius:14px;padding:14px;background:var(--card)}
-    .thumb{height:360px;border-radius:12px;background:#f3f6fb;display:flex;align-items:center;justify-content:center;color:var(--muted);overflow:hidden}
-    .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-    h1{margin:10px 0 6px;font-size:28px;letter-spacing:-0.02em}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;color:var(--muted);background:#fff}
-    .badge.soldout{border-color:#fecaca;color:#b91c1c;background:#fff5f5}
-    .badge.preorder{border-color:#fde68a;color:#92400e;background:#fffbeb}
-    .line{height:1px;background:#eef2f7;margin:12px 0}
-    label{display:block;font-weight:800;margin:10px 0 6px}
-    select,input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;outline:none;background:#fff}
-    select:focus,input:focus{border-color:#bcd4ff;box-shadow:0 0 0 3px rgba(11,105,255,0.10)}
-    .price{font-size:20px;font-weight:900}
-    .btn{display:inline-block;width:100%;padding:12px 12px;border-radius:12px;text-decoration:none;background:var(--accent);color:#fff;font-weight:900;border:0;cursor:pointer}
-    .btn.secondary{background:#111827}
-    .btn.disabled{background:#d1d5db;color:#111;cursor:not-allowed}
-    .note{color:var(--muted);white-space:pre-wrap}
-    .specText{font-weight:800}
-    @media (max-width:900px){ .grid{grid-template-columns:1fr} .thumb{height:300px} }
-  </style>
-</head>
-<body>
-<div class="wrap">
-  <div class="top">
-    <div>
-      <a href="/products.html">← 回商品列表</a>
-      <span class="muted"> / 商品詳情</span>
-    </div>
-    <div class="muted"><a href="/cart.html">前往購物車 →</a></div>
-  </div>
-
-  <div id="loading" class="card">讀取中…</div>
-
-  <div id="content" style="display:none">
-    <div class="grid">
-      <section class="card">
-        <div class="thumb" id="thumb">無圖片</div>
-        <h1 id="name"></h1>
-
-        <div class="row">
-          <span class="badge" id="skuBadge"></span>
-          <span class="badge" id="catBadge"></span>
-          <span class="badge" id="statusBadge"></span>
-        </div>
-
-        <div class="line"></div>
-
-        <div class="muted">規格</div>
-        <div class="specText" id="specText">—</div>
-
-        <div class="line"></div>
-
-        <div class="muted">備註</div>
-        <div class="note" id="note">—</div>
-      </section>
-
-      <aside class="card">
-        <div class="row" style="justify-content:space-between">
-          <div class="muted">價格</div>
-          <div class="price" id="priceText">NT$ 0</div>
-        </div>
-        <div class="muted" id="priceDetail" style="margin-top:4px"></div>
-
-        <div class="line"></div>
-
-        <div id="optionsArea"></div>
-
-        <label for="qty">數量</label>
-        <input id="qty" type="number" min="1" value="1" />
-
-        <div class="line"></div>
-
-        <button id="addBtn" class="btn">加入購物車</button>
-        <div style="height:10px"></div>
-        <button id="buyBtn" class="btn secondary">加入後前往購物車</button>
-
-        <div style="height:12px"></div>
-        <div class="muted" style="font-size:13px">
-          spec 是文字規格；options 才是可選項並計入加價。
-        </div>
-      </aside>
-    </div>
-  </div>
-</div>
-
-<script>
-/* ====== 你的設定 ====== */
-const SHEET_ID = "1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
-const SHEET_PRODUCTS = "Products";
-/* ====================== */
-
-const gvizUrl = (sheetName) =>
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tqx=out:json`;
-
-async function fetchSheet(sheetName){
-  const res = await fetch(gvizUrl(sheetName), { cache: "no-store" });
-  const text = await res.text();
-  const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}")+1));
-  const cols = json.table.cols.map(c => c.label);
-  const rows = json.table.rows.map(r => {
-    const obj = {};
-    r.c.forEach((cell,i)=> obj[cols[i]] = cell ? cell.v : "");
-    return obj;
-  });
-  return rows;
-}
-
-function qs(name){ return new URLSearchParams(location.search).get(name) || ""; }
-function normBool(v){ return String(v).toUpperCase() === "TRUE"; }
-function normStatus(v){ const s = String(v||"").trim(); return s || "in_stock"; }
-function escapeHtml(s){
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-
-function parseOptions(optionsStr){
-  // options: "顏色:黑=0|棕=0;版本:標準=0|加大=150"
-  if(!optionsStr) return [];
-  return String(optionsStr).split(";").map(g=>{
-    const [name, rest] = g.split(":");
-    const values = (rest||"").split("|").map(x=>{
-      const [value, delta] = x.split("=");
-      return { value: (value||"").trim(), delta: Number(delta||0) };
-    }).filter(v=>v.value);
-    return { name: (name||"").trim(), values };
-  }).filter(g=>g.name && g.values.length);
-}
-
-function getCart(){ return JSON.parse(localStorage.getItem("cart") || "[]"); }
-function setCart(cart){ localStorage.setItem("cart", JSON.stringify(cart)); }
-
-let PRODUCT = null;
-let OPTIONS_DEF = [];
-let SELECTED = {}; // name -> {value, delta}
-
-function calcUnitPrice(){
-  const base = Number(p.price_override || p.price || 0);
-  let delta = 0;
-  for(const k of Object.keys(SELECTED)){
-    delta += Number(SELECTED[k].delta || 0);
-  }
-  return { base, delta, unit: base + delta };
-}
-
-function renderPrice(){
-  const { base, delta, unit } = calcUnitPrice();
-  const qty = Math.max(1, Number(document.getElementById("qty").value || 1));
-  const total = unit * qty;
-
-  document.getElementById("priceText").textContent = `NT$ ${total}`;
-  const detail = [];
-  detail.push(`基礎價 ${base}`);
-  if(delta) detail.push(`選項加價 ${delta}`);
-  detail.push(`單價 ${unit} × ${qty}`);
-  document.getElementById("priceDetail").textContent = detail.join("  ·  ");
-}
-
-function renderOptions(){
-  const area = document.getElementById("optionsArea");
-  area.innerHTML = "";
-
-  if(!OPTIONS_DEF.length){
-    area.innerHTML = `<div class="muted">可選項：無</div>`;
-    return;
-  }
-
-  for(const group of OPTIONS_DEF){
-    const id = `opt_${group.name}`;
-    const label = document.createElement("label");
-    label.setAttribute("for", id);
-    label.textContent = group.name;
-    area.appendChild(label);
-
-    const sel = document.createElement("select");
-    sel.id = id;
-
-    for(const opt of group.values){
-      const o = document.createElement("option");
-      o.value = opt.value;
-      o.textContent = opt.delta ? `${opt.value} (+${opt.delta})` : opt.value;
-      sel.appendChild(o);
+    :root{
+      --bg:#ffffff;
+      --border:#e5e7eb;
+      --muted:#6b7280;
+      --soft:#f7f9fc;
+      --accent:#0b69ff;
+      --danger:#d11;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:"Helvetica Neue",Arial,"Noto Sans TC",sans-serif;
+      color:#111;
+      background:var(--bg);
+    }
+    a{color:inherit;text-decoration:none}
+    .wrap{
+      max-width:1200px;
+      margin:24px auto;
+      padding:18px;
+    }
+    .top{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .top a{font-weight:800}
+    .banner{
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:16px;
+      background:var(--soft);
+      margin-bottom:14px;
+    }
+    .banner h3{
+      margin:0 0 8px;
+      font-size:18px;
+    }
+    .banner .content{
+      white-space:pre-wrap; /* ✅ 公告換行 */
+      color:#111;
+      line-height:1.7;
     }
 
-    const first = group.values[0];
-    SELECTED[group.name] = { value: first.value, delta: first.delta };
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin:14px 0;
+    }
+    .search{
+      flex:1;
+      min-width:260px;
+      padding:12px 14px;
+      border:1px solid #dbe2ea;
+      border-radius:14px;
+      outline:none;
+      font-size:16px;
+    }
+    .search:focus{
+      border-color:#bcd4ff;
+      box-shadow:0 0 0 3px rgba(11,105,255,0.10);
+    }
+    .chips{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .chip{
+      border:1px solid var(--border);
+      background:#fff;
+      padding:8px 12px;
+      border-radius:999px;
+      font-weight:900;
+      cursor:pointer;
+      user-select:none;
+    }
+    .chip.active{
+      border-color:#bcd4ff;
+      background:#f1f6ff;
+      color:#0b69ff;
+    }
 
-    sel.addEventListener("change", ()=>{
-      const picked = group.values.find(v=>v.value===sel.value);
-      SELECTED[group.name] = { value: picked.value, delta: picked.delta };
-      renderPrice();
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:14px;
+    }
+    @media (max-width: 980px){
+      .grid{grid-template-columns: repeat(2, 1fr);}
+    }
+    @media (max-width: 640px){
+      .grid{grid-template-columns: 1fr;}
+    }
+
+    .card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .thumb{
+      width:100%;
+      aspect-ratio: 16/10;
+      background:#f3f6fb;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .thumb img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .pad{padding:14px}
+    .name{
+      font-size:20px;
+      font-weight:900;
+      margin:0 0 4px;
+    }
+    .sku{
+      color:var(--muted);
+      font-weight:800;
+      margin-bottom:10px;
+    }
+    .badges{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin:8px 0 10px;
+    }
+    .badge{
+      font-size:14px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-weight:900;
+      background:#fff;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .badge.ok{
+      border-color:#cfe2ff;
+      color:#0b69ff;
+      background:#f1f6ff;
+    }
+    .badge.soldout{
+      border-color:#fecaca;
+      color:#b91c1c;
+      background:#fff5f5;
+    }
+    .badge.preorder{
+      border-color:#fde68a;
+      color:#92400e;
+      background:#fffbeb;
+    }
+
+    /* ✅ 價格視覺 */
+    .priceRow{
+      display:flex;
+      gap:10px;
+      align-items:flex-end;
+      flex-wrap:wrap;
+      margin:10px 0 8px;
+    }
+    .priceNow{
+      font-weight:1000;
+      font-size:20px;   /* ✅ 比之前大 */
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #cfe2ff;
+      background:#f1f6ff;
+      color:#0b69ff;
+    }
+    .priceOld{
+      font-weight:900;
+      font-size:14px;
+      color:#9ca3af;
+      text-decoration:line-through;
+    }
+    .priceSpecial{
+      font-weight:1000;
+      font-size:20px; /* ✅ 特價同樣大 */
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #fecaca;
+      background:#fff5f5;
+      color:var(--danger);
+      display:inline-flex;
+      gap:6px;
+      align-items:center;
+    }
+
+    .meta{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.6;
+      margin-top:8px;
+    }
+    .meta .line{
+      margin-top:4px;
+    }
+
+    .btn{
+      margin-top:12px;
+      display:inline-block;
+      padding:10px 12px;
+      border-radius:12px;
+      background:var(--accent);
+      color:#fff;
+      font-weight:1000;
+    }
+    .btn.gray{
+      background:#d1d5db;
+      color:#111;
+      cursor:not-allowed;
+    }
+    .foot{
+      margin-top:14px;
+      color:var(--muted);
+      font-size:14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a href="/index.html">← 回首頁</a>
+      <a href="/cart.html">前往購物車 →</a>
+    </div>
+
+    <div class="banner" id="banner" style="display:none;">
+      <h3 id="bannerTitle">公告</h3>
+      <div class="content" id="bannerContent"></div>
+    </div>
+
+    <div class="controls">
+      <input id="q" class="search" placeholder="搜尋：名稱 / 編號 / 關鍵字…" />
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="foot" id="count"></div>
+  </div>
+
+<script>
+/* ====== 設定 ====== */
+const SHEET_ID="1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
+const SHEET_PRODUCTS="Products";
+const SHEET_CATEGORIES="Categories";
+const SHEET_PUBLIC="Public";
+/* ================= */
+
+function gvizUrl(name){
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(name)}&tqx=out:json`;
+}
+async function fetchSheet(name){
+  const r = await fetch(gvizUrl(name), { cache:"no-store" });
+  const t = await r.text();
+  const j = JSON.parse(t.substring(t.indexOf("{"), t.lastIndexOf("}")+1));
+  const cols = j.table.cols.map(c=>c.label);
+  return j.table.rows.map(row=>{
+    const o = {};
+    row.c.forEach((cell,i)=> o[cols[i]] = cell ? cell.v : "");
+    return o;
+  });
+}
+function escapeHtml(s){
+  return String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+function isEnabled(v){
+  return v === true || String(v).toUpperCase().trim() === "TRUE";
+}
+function normStatus(v){
+  return String(v || "").trim() || "in_stock";
+}
+function statusLabel(s){
+  if(s==="sold_out") return "售完";
+  if(s==="preorder") return "預購";
+  return "可購買";
+}
+function statusClass(s){
+  if(s==="sold_out") return "soldout";
+  if(s==="preorder") return "preorder";
+  return "ok";
+}
+function money(n){
+  return `NT$ ${Number(n||0)}`;
+}
+function normalizeText(s){
+  return String(s || "").toLowerCase();
+}
+function parseOptionsPreview(str){
+  // 只做列表頁顯示：顏色：黑、棕 / 版本：標準、加大（+150）
+  if(!str) return "";
+  const groups = String(str).split(";").map(x=>x.trim()).filter(Boolean);
+  const lines = [];
+  for(const g of groups){
+    const [nRaw, restRaw] = g.split(":");
+    const name = (nRaw||"").trim();
+    const rest = (restRaw||"").trim();
+    if(!name || !rest) continue;
+
+    const items = rest.split("|").map(x=>x.trim()).filter(Boolean).map(item=>{
+      const [valRaw, deltaRaw] = item.split("=");
+      const val = (valRaw||"").trim();
+      const delta = Number((deltaRaw||"0").trim() || 0);
+      if(!val) return null;
+      return delta ? `${val}（+${delta}）` : val;
+    }).filter(Boolean);
+
+    if(items.length){
+      lines.push(`${name}：${items.join("、")}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+let PRODUCTS=[];
+let CATS=[];
+let ACTIVE_CAT="全部";
+
+function renderChips(){
+  const chips = document.getElementById("chips");
+  const names = ["全部", ...CATS.map(c=>c.name).filter(Boolean)];
+  chips.innerHTML = "";
+  for(const n of names){
+    const el = document.createElement("div");
+    el.className = "chip" + (n===ACTIVE_CAT ? " active" : "");
+    el.textContent = n;
+    el.addEventListener("click", ()=>{
+      ACTIVE_CAT = n;
+      renderChips();
+      renderGrid();
     });
-
-    area.appendChild(sel);
+    chips.appendChild(el);
   }
 }
 
-function setStatusUI(status){
-  const badge = document.getElementById("statusBadge");
-  const addBtn = document.getElementById("addBtn");
-  const buyBtn = document.getElementById("buyBtn");
+function matchCat(p){
+  if(ACTIVE_CAT==="全部") return true;
+  return String(p.category_path || "") === ACTIVE_CAT;
+}
 
-  if(status === "sold_out"){
-    badge.textContent = "售完";
-    badge.className = "badge soldout";
-    addBtn.className = "btn disabled";
-    buyBtn.className = "btn secondary disabled";
-    addBtn.disabled = true;
-    buyBtn.disabled = true;
-  }else if(status === "preorder"){
-    badge.textContent = "預購";
-    badge.className = "badge preorder";
-    addBtn.className = "btn";
-    buyBtn.className = "btn secondary";
-    addBtn.disabled = false;
-    buyBtn.disabled = false;
+function matchQuery(p, q){
+  if(!q) return true;
+  const hay = [
+    p.name, p.sku, p.search_keyword, p.category_path, p.note
+  ].map(normalizeText).join(" ");
+  return hay.includes(q);
+}
+
+function computeDisplayPrice(p){
+  const baseOriginal = Number(p.price || 0);
+  const baseSpecial = Number(p.price_override || 0);
+  const hasSpecial = !!p.price_override && !Number.isNaN(baseSpecial) && baseSpecial > 0;
+  return { baseOriginal, baseSpecial, hasSpecial, base: hasSpecial ? baseSpecial : baseOriginal };
+}
+
+function renderGrid(){
+  const grid = document.getElementById("grid");
+  const q = normalizeText(document.getElementById("q").value);
+
+  const filtered = PRODUCTS
+    .filter(p => isEnabled(p.enabled))
+    .filter(p => normStatus(p.status) !== "hidden")
+    .filter(p => matchCat(p))
+    .filter(p => matchQuery(p, q))
+    .sort((a,b)=> Number(a.sort||0) - Number(b.sort||0));
+
+  grid.innerHTML = "";
+
+  for(const p of filtered){
+    const st = normStatus(p.status);
+    const sold = st==="sold_out";
+    const { baseOriginal, baseSpecial, hasSpecial, base } = computeDisplayPrice(p);
+
+    const optPreview = parseOptionsPreview(p.options || "");
+    const specLine = p.spec ? `規格：${escapeHtml(p.spec)}` : "";
+    const optLines = optPreview ? optPreview.split("\n").map(x=>escapeHtml(x)).join("<br>") : "";
+
+    const priceHtml = hasSpecial
+      ? `
+        <div class="priceRow">
+          <span class="priceOld">${money(baseOriginal)}</span>
+          <span class="priceSpecial">🔥 特價 ${money(baseSpecial)}</span>
+        </div>
+      `
+      : `
+        <div class="priceRow">
+          <span class="priceNow">${money(base)}</span>
+        </div>
+      `;
+
+    const btn = sold
+      ? `<span class="btn gray">已售完</span>`
+      : `<a class="btn" href="/product.html?sku=${encodeURIComponent(p.sku)}">查看 / 選項</a>`;
+
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="thumb">
+        ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name||"")}">` : "無圖片"}
+      </div>
+      <div class="pad">
+        <div class="name">${escapeHtml(p.name||"")}</div>
+        <div class="sku">編號：${escapeHtml(p.sku||"")}</div>
+
+        <div class="badges">
+          <span class="badge ${statusClass(st)}">${statusLabel(st)}</span>
+        </div>
+
+        ${priceHtml}
+
+        <div class="meta">
+          ${specLine ? `<div class="line">${specLine}</div>` : ""}
+          ${optLines ? `<div class="line">${optLines}</div>` : ""}
+        </div>
+
+        ${btn}
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+
+  document.getElementById("count").textContent = `顯示 ${filtered.length} 筆`;
+}
+
+async function renderBanner(){
+  // Public sheet: enabled, sort, key, title, content
+  const rows = await fetchSheet(SHEET_PUBLIC);
+  const active = rows
+    .filter(r => isEnabled(r.enabled))
+    .sort((a,b)=> Number(a.sort||0) - Number(b.sort||0));
+
+  const bannerRow = active.find(r => String(r.key||"") === "products_banner");
+  if(!bannerRow) return;
+
+  document.getElementById("banner").style.display = "block";
+  document.getElementById("bannerTitle").textContent = bannerRow.title || "公告";
+
+  // ✅ 支援換行：直接用 textContent + pre-wrap
+  document.getElementById("bannerContent").textContent = bannerRow.content || "";
+}
+
+(async function init(){
+  const [products, cats] = await Promise.all([
+    fetchSheet(SHEET_PRODUCTS),
+    fetchSheet(SHEET_CATEGORIES).catch(()=>[])
+  ]);
+
+  PRODUCTS = products || [];
+
+  // Categories sheet 你若用 name 欄位，我就讀 name；否則 fallback 用 category_path unique
+  if((cats||[]).some(x => x.name)){
+    CATS = (cats||[])
+      .filter(r => isEnabled(r.enabled))
+      .sort((a,b)=> Number(a.sort||0) - Number(b.sort||0))
+      .map(r => ({ name: r.name }));
   }else{
-    badge.textContent = "可購買";
-    badge.className = "badge";
-    addBtn.className = "btn";
-    buyBtn.className = "btn secondary";
-    addBtn.disabled = false;
-    buyBtn.disabled = false;
-  }
-}
-
-function addCurrentToCart(goCart){
-  const status = normStatus(PRODUCT.status);
-  if(status === "sold_out") return;
-
-  const qty = Math.max(1, Number(document.getElementById("qty").value || 1));
-  const { unit } = calcUnitPrice();
-
-  const cart = getCart();
-  const optKey = Object.keys(SELECTED).sort().map(k=>`${k}=${SELECTED[k].value}`).join("|");
-  const lineId = `${PRODUCT.sku}__${optKey}`;
-
-  const existing = cart.find(i => i.line_id === lineId);
-  if(existing){
-    existing.qty += qty;
-  }else{
-    cart.push({
-      line_id: lineId,
-      sku: PRODUCT.sku,
-      name: PRODUCT.name,
-      category_path: PRODUCT.category_path || "",
-      spec_text: PRODUCT.spec || "",
-      options_selected: SELECTED,
-      base_price: Number(PRODUCT.price || 0),
-      unit_price: Number(unit || 0),
-      qty,
-      image_url: PRODUCT.image_url || ""
-    });
+    const uniq = Array.from(new Set(PRODUCTS.map(p=>String(p.category_path||"").trim()).filter(Boolean)));
+    CATS = uniq.map(name=>({name}));
   }
 
-  setCart(cart);
-  if(goCart) location.href = "/cart.html";
-  else alert("已加入購物車 ✅");
-}
+  renderChips();
+  renderGrid();
+  renderBanner();
 
-async function init(){
-  const sku = qs("sku").trim();
-  if(!sku){
-    document.getElementById("loading").textContent = "缺少 sku。請從商品列表點進來。";
-    return;
-  }
-
-  const products = await fetchSheet(SHEET_PRODUCTS);
-  const p = products.find(x => String(x.sku).trim() === sku);
-
-  // ✅ hidden 也當作不可見
-  if(!p || !normBool(p.enabled) || normStatus(p.status)==="hidden"){
-    document.getElementById("loading").textContent = `找不到商品：${sku}（可能未上架）`;
-    return;
-  }
-
-  PRODUCT = p;
-  document.title = `${PRODUCT.name} — 商品詳情`;
-
-  const imgHtml = PRODUCT.image_url
-    ? `<img src="${PRODUCT.image_url}" alt="${escapeHtml(PRODUCT.name)}">`
-    : "";
-  document.getElementById("thumb").innerHTML = imgHtml || "無圖片";
-  document.getElementById("name").textContent = PRODUCT.name || "";
-  document.getElementById("skuBadge").textContent = `編號：${PRODUCT.sku || ""}`;
-  document.getElementById("catBadge").textContent = `分類：${PRODUCT.category_path || "—"}`;
-  document.getElementById("note").textContent = PRODUCT.note ? String(PRODUCT.note) : "—";
-  document.getElementById("specText").textContent = PRODUCT.spec ? String(PRODUCT.spec) : "—";
-
-  setStatusUI(normStatus(PRODUCT.status));
-
-  OPTIONS_DEF = parseOptions(PRODUCT.options || "");
-  renderOptions();
-
-  document.getElementById("qty").addEventListener("input", renderPrice);
-  renderPrice();
-
-  document.getElementById("addBtn").addEventListener("click", ()=> addCurrentToCart(false));
-  document.getElementById("buyBtn").addEventListener("click", ()=> addCurrentToCart(true));
-
-  document.getElementById("loading").style.display = "none";
-  document.getElementById("content").style.display = "block";
-}
-
-init();
+  document.getElementById("q").addEventListener("input", renderGrid);
+})();
 </script>
 </body>
 </html>
