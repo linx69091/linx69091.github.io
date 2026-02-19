@@ -446,12 +446,22 @@ function render(){
     btn.textContent = "送出中…";
 
     try{
-      const res = await fetch(ORDERS_API, {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(payload)
+     const res = await fetch(ORDERS_API, {
+      method: "POST",
+      // ✅ 用 text/plain 避免 CORS preflight
+      headers: { "Content-Type":"text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
       });
-      const data = await res.json();
+
+    // 有些情況下 res.json() 會因為回應格式/代理被改寫而失敗
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch(e){ data = null; }
+
+    if(!data || !data.ok){
+    throw new Error((data && data.error) ? data.error : ("送出失敗，回應：" + text));
+    }
+
 
       if(!data || !data.ok){
         throw new Error(data?.error || "送出失敗（未知錯誤）");
