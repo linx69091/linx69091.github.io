@@ -332,18 +332,10 @@ function render(){
 
     <hr class="hr"/>
 
-    <div class="field">
-      <label>即將送出的訂單內容（預覽）</label>
-      <textarea id="preview" readonly></textarea>
-      <div class="small" style="margin-top:6px;">
-        總金額：<b id="previewTotal"></b>
-      </div>
-    </div>
-
-    <button class="btn" id="btnSubmit">送出訂單（寫入 Google Sheet）</button>
+    <button class="btn" id="btnSubmit">送出訂單</button>
     <div class="note">
       送出後會產生訂單編號並清空購物車。<br>
-      若你要加「付款方式」或「自動回信」，下一步也能做。
+      若有任何問題，歡迎加入官方LINE諮詢。
     </div>
   `;
   area.appendChild(checkoutCard);
