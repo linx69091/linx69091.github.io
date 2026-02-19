@@ -1,30 +1,269 @@
-// ✅ 兼容舊版本購物車 key，並自動遷移到 CART_V1
-const CART_KEY = "CART_V1";
-const LEGACY_CART_KEYS = ["CART", "cart", "CART_ITEMS", "CART_V0"];
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>購物車</title>
+
+<style>
+:root{
+  --bg:#f5f6f8;
+  --card:#ffffff;
+  --text:#111;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --blue:#1a73e8;
+  --red:#d93025;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  color:var(--text);
+}
+.wrap{
+  max-width:1000px;
+  margin:40px auto;
+  padding:0 18px;
+}
+a{text-decoration:none;color:var(--blue);font-weight:700}
+h1{margin:16px 0 24px;font-size:32px}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:18px;
+  margin-bottom:16px;
+}
+
+.item{
+  display:flex;
+  gap:16px;
+  align-items:flex-start;
+  border-bottom:1px solid #f0f2f5;
+  padding:14px 0;
+}
+.item:last-child{border:none}
+
+.thumb{
+  width:120px;
+  height:80px;
+  background:#f3f4f6;
+  border-radius:10px;
+  overflow:hidden;
+  flex-shrink:0;
+}
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.info{
+  flex:1;
+}
+.name{
+  font-weight:900;
+  font-size:18px;
+  margin-bottom:6px;
+}
+.small{
+  font-size:14px;
+  color:var(--muted);
+  margin:3px 0;
+}
+.price{
+  font-weight:900;
+  margin-top:6px;
+}
+
+.strike{
+  text-decoration:line-through;
+  color:#9ca3af;
+  margin-right:8px;
+}
+.special{
+  color:var(--red);
+}
+
+.qty{
+  width:80px;
+  padding:6px 8px;
+  border-radius:8px;
+  border:1px solid #dbe2ea;
+  font-size:14px;
+}
+
+.remove{
+  color:#b91c1c;
+  font-size:13px;
+  cursor:pointer;
+  margin-top:8px;
+}
+
+.totalBox{
+  text-align:right;
+  margin-top:20px;
+}
+.totalBig{
+  font-size:24px;
+  font-weight:900;
+}
+
+.btn{
+  margin-top:14px;
+  background:var(--blue);
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  padding:10px 16px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.empty{
+  text-align:center;
+  color:var(--muted);
+  padding:40px 0;
+}
+.note{
+  margin-top:30px;
+  color:var(--muted);
+  font-size:14px;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <a href="./products.html">← 回商品列表</a>
+  <h1>購物車</h1>
+
+  <div id="cartArea"></div>
+
+  <div class="note">
+    提示：這個購物車目前存在於你的瀏覽器(localStorage)。<br>
+    尚未串接付款，結帳會跳轉到測試表單（下階段串接 Google Forms）。
+  </div>
+</div>
+
+<script>
+const CART_KEY="CART_V1";
 
 function readCart(){
-  // 先讀新 key
   try{
-    const v = localStorage.getItem(CART_KEY);
-    if(v) return JSON.parse(v) || [];
-  }catch(e){}
-
-  // 再嘗試舊 key
-  for(const k of LEGACY_CART_KEYS){
-    try{
-      const v = localStorage.getItem(k);
-      if(!v) continue;
-      const parsed = JSON.parse(v) || [];
-      if(Array.isArray(parsed) && parsed.length){
-        // 遷移到新 key
-        localStorage.setItem(CART_KEY, JSON.stringify(parsed));
-        return parsed;
-      }
-    }catch(e){}
+    return JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+  }catch(e){
+    return [];
   }
-  return [];
+}
+function writeCart(items){
+  localStorage.setItem(CART_KEY, JSON.stringify(items||[]));
 }
 
-function writeCart(items){
-  localStorage.setItem(CART_KEY, JSON.stringify(items || []));
+function money(n){
+  return "NT$ " + Number(n||0);
 }
+
+function render(){
+  const area = document.getElementById("cartArea");
+  const cart = readCart();
+  area.innerHTML="";
+
+  if(!cart.length){
+    area.innerHTML = `
+      <div class="card empty">
+        購物車目前是空的。可以到商品頁加入範例商品測試。
+      </div>
+    `;
+    return;
+  }
+
+  let totalAll = 0;
+
+  const card = document.createElement("div");
+  card.className="card";
+
+  cart.forEach((item,index)=>{
+    totalAll += Number(item.total||0);
+
+    const div = document.createElement("div");
+    div.className="item";
+
+    div.innerHTML=`
+      <div class="thumb">
+        ${item.image_url ? `<img src="${item.image_url}">` : ""}
+      </div>
+      <div class="info">
+        <div class="name">${item.name}</div>
+        <div class="small">編號：${item.sku}</div>
+        ${item.options_text ? `<div class="small">${item.options_text}</div>`:""}
+        <div class="price">
+          ${item.price_special 
+            ? `<span class="strike">${money(item.price_original)}</span>
+               <span class="special">🔥 特價 ${money(item.price_special)}</span>`
+            : money(item.price_original)}
+        </div>
+        <div class="small">單價 ${money(item.unit_price)}</div>
+
+        <div style="margin-top:8px;">
+          數量：
+          <input type="number" class="qty" min="1" value="${item.qty}" data-index="${index}">
+        </div>
+
+        <div class="remove" data-remove="${index}">移除商品</div>
+      </div>
+    `;
+    card.appendChild(div);
+  });
+
+  const totalBox=document.createElement("div");
+  totalBox.className="totalBox";
+  totalBox.innerHTML=`
+    <div class="totalBig">總金額：${money(totalAll)}</div>
+    <button class="btn" id="checkoutBtn">前往結帳</button>
+  `;
+  card.appendChild(totalBox);
+
+  area.appendChild(card);
+
+  // 數量修改
+  document.querySelectorAll(".qty").forEach(input=>{
+    input.addEventListener("input",()=>{
+      const idx = Number(input.dataset.index);
+      const cart = readCart();
+      const item = cart[idx];
+      const newQty = Math.max(1,Number(input.value||1));
+
+      item.qty = newQty;
+      item.total = newQty * item.unit_price;
+
+      writeCart(cart);
+      render();
+    });
+  });
+
+  // 刪除
+  document.querySelectorAll("[data-remove]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const idx = Number(btn.dataset.remove);
+      const cart = readCart();
+      cart.splice(idx,1);
+      writeCart(cart);
+      render();
+    });
+  });
+
+  // 結帳
+  document.getElementById("checkoutBtn").addEventListener("click",()=>{
+    alert("下一階段可導向 Google 表單或金流系統。");
+  });
+}
+
+render();
+</script>
+
+</body>
+</html>
