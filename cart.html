@@ -183,10 +183,9 @@ input:focus, textarea:focus, select:focus{
   <h1>購物車</h1>
 
   <div id="cartArea"></div>
-
+  
   <div class="note">
-    提示：購物車存在於你的瀏覽器（localStorage）。<br>
-    結帳送出後會直接寫入你的 Google Sheet（Orders 分頁）。
+  
   </div>
 </div>
 
@@ -248,7 +247,7 @@ function render(){
   if(!cart.length){
     area.innerHTML = `
       <div class="card empty">
-        購物車目前是空的。可以到商品頁加入商品測試。
+        購物車目前是空的。可以到商品頁加入商品。
       </div>
     `;
     return;
@@ -334,7 +333,7 @@ function render(){
 
     <button class="btn" id="btnSubmit">送出訂單</button>
     <div class="note">
-      送出後會產生訂單編號並清空購物車。<br>
+      提示：送出後會產生訂單編號並清空購物車。<br>
       若有任何問題，歡迎加入官方LINE諮詢。
     </div>
   `;
@@ -450,7 +449,7 @@ function render(){
     }catch(err){
       msg.innerHTML = `<div class="error">❌ 送出失敗：${String(err.message || err)}<br>請稍後再試，或檢查 Apps Script 權限 / API_TOKEN。</div>`;
       btn.disabled = false;
-      btn.textContent = "送出訂單（寫入 Google Sheet）";
+      btn.textContent = "送出訂單";
     }
   });
 }
