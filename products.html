@@ -13,7 +13,10 @@
 body{
   font-family:"Helvetica Neue",Arial,"Noto Sans TC",sans-serif;
   margin:0;
+  color:#111;
+  background:#fff;
 }
+a{color:inherit}
 .wrap{
   max-width:1100px;
   margin:24px auto;
@@ -22,6 +25,8 @@ body{
 .top{
   display:flex;
   justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
   margin-bottom:12px;
 }
 .banner{
@@ -31,17 +36,24 @@ body{
   padding:14px;
   margin-bottom:16px;
 }
+.banner h3{margin:0 0 6px}
 .controls{
   display:flex;
   gap:10px;
   margin-bottom:16px;
   flex-wrap:wrap;
+  align-items:center;
 }
 input[type=search]{
-  padding:10px;
+  padding:10px 12px;
   border-radius:10px;
   border:1px solid #ddd;
   min-width:240px;
+  outline:none;
+}
+input[type=search]:focus{
+  border-color:#bcd4ff;
+  box-shadow:0 0 0 3px rgba(11,105,255,0.10);
 }
 .grid{
   display:grid;
@@ -52,6 +64,7 @@ input[type=search]{
   border:1px solid #eee;
   border-radius:14px;
   padding:12px;
+  background:#fff;
 }
 .thumb{
   height:150px;
@@ -62,31 +75,37 @@ input[type=search]{
   justify-content:center;
   margin-bottom:10px;
   overflow:hidden;
+  color:var(--muted);
 }
 .thumb img{
   width:100%;
   height:100%;
   object-fit:cover;
+  display:block;
 }
 .name{
   font-weight:800;
+  margin-top:2px;
 }
 .meta{
   color:var(--muted);
   font-size:14px;
-  margin-top:4px;
+  margin-top:6px;
   line-height:1.45;
 }
 .statusline{
   display:flex;
   gap:10px;
-  margin-top:8px;
+  margin-top:10px;
+  flex-wrap:wrap;
+  align-items:center;
 }
 .badge{
   font-size:14px;
   padding:6px 10px;
   border-radius:999px;
   border:1px solid #e5e7eb;
+  background:#fff;
   font-weight:700;
 }
 .badge.price{
@@ -99,6 +118,7 @@ input[type=search]{
 .badge.soldout{
   border-color:#fecaca;
   color:#b91c1c;
+  background:#fff5f5;
 }
 .badge.preorder{
   border-color:#fde68a;
@@ -107,8 +127,8 @@ input[type=search]{
 }
 .btn{
   display:inline-block;
-  margin-top:10px;
-  padding:8px 10px;
+  margin-top:12px;
+  padding:9px 12px;
   border-radius:10px;
   background:var(--accent);
   color:#fff;
@@ -116,8 +136,14 @@ input[type=search]{
   text-decoration:none;
 }
 .btn.disabled{
-  background:#ccc;
+  background:#d1d5db;
+  color:#111;
   pointer-events:none;
+}
+.footer{
+  margin-top:16px;
+  color:var(--muted);
+  font-size:13px;
 }
 </style>
 </head>
@@ -126,7 +152,7 @@ input[type=search]{
 <div class="wrap">
   <div class="top">
     <a href="/index.html">← 回首頁</a>
-    <div>商品 / 作品</div>
+    <div class="meta" style="margin:0">商品 / 作品</div>
   </div>
 
   <div id="banner" class="banner" style="display:none;"></div>
@@ -136,132 +162,224 @@ input[type=search]{
   </div>
 
   <div class="grid" id="grid"></div>
+  <div class="footer" id="hint"></div>
 </div>
 
 <script>
-
+/* ====== 設定 ====== */
 const SHEET_ID="1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
 const SHEET_PRODUCTS="Products";
 const SHEET_PUBLIC="Public";
+/* ================= */
 
 function gvizUrl(name){
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${name}&tqx=out:json`;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(name)}&tqx=out:json`;
 }
 
 async function fetchSheet(name){
-  const r=await fetch(gvizUrl(name),{cache:"no-store"});
-  const t=await r.text();
-  const j=JSON.parse(t.substring(t.indexOf("{"),t.lastIndexOf("}")+1));
-  const cols=j.table.cols.map(c=>c.label);
-  return j.table.rows.map(r=>{
-    const o={};
-    r.c.forEach((c,i)=>o[cols[i]]=c?c.v:"");
+  const r = await fetch(gvizUrl(name), { cache:"no-store" });
+  const t = await r.text();
+  const j = JSON.parse(t.substring(t.indexOf("{"), t.lastIndexOf("}")+1));
+  const cols = j.table.cols.map(c=>c.label);
+  return j.table.rows.map(row=>{
+    const o = {};
+    row.c.forEach((cell,i)=> o[cols[i]] = cell ? cell.v : "");
     return o;
   });
 }
 
 function escapeHtml(s){
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
 }
 
-function optionsToText(str){
-  if(!str) return [];
-  return str.split(";").map(x=>x.trim()).filter(Boolean).map(g=>{
-    const [n,rest]=g.split(":");
-    if(!n||!rest) return null;
-    const items=rest.split("|").map(i=>{
-      const [v,d]=i.split("=");
-      return Number(d)>0?`${v}（+${d}）`:v;
-    });
-    return {name:n.trim(),items};
-  }).filter(Boolean);
+/* ✅ enabled 容錯：勾選框 true / 字串 TRUE 都算上架 */
+function isEnabled(v){
+  return v === true || String(v).toUpperCase().trim() === "TRUE";
 }
 
+/* ✅ status */
+function normStatus(v){
+  return String(v || "").trim() || "in_stock";
+}
 function statusLabel(s){
   if(s==="sold_out") return "售完";
   if(s==="preorder") return "預購";
   return "可購買";
 }
-
 function statusClass(s){
   if(s==="sold_out") return "soldout";
   if(s==="preorder") return "preorder";
   return "";
 }
 
-let PRODUCTS=[];
+/* ✅ options 顯示 */
+function optionsToText(str){
+  if(!str) return [];
+  const groups = String(str).split(";").map(x=>x.trim()).filter(Boolean);
+
+  const lines = [];
+  for(const g of groups){
+    const [nRaw, restRaw] = g.split(":");
+    const name = (nRaw || "").trim();
+    const rest = (restRaw || "").trim();
+    if(!name || !rest) continue;
+
+    const items = rest.split("|").map(x=>x.trim()).filter(Boolean).map(item=>{
+      const [valRaw, deltaRaw] = item.split("=");
+      const val = (valRaw || "").trim();
+      const delta = Number((deltaRaw || "0").trim() || 0);
+      if(!val) return "";
+      return delta ? `${val}（+${delta}）` : `${val}`;
+    }).filter(Boolean);
+
+    if(items.length) lines.push({ name, items });
+  }
+  return lines;
+}
+
+/* ✅ 公告 content_md 換行 + 簡易列表 */
+function mdToHtml(md){
+  if(!md) return "";
+  const esc = (s)=> String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const lines = String(md).replace(/\r\n/g,"\n").split("\n");
+
+  let html = "";
+  let inList = false;
+
+  for(const raw of lines){
+    const line = raw;
+
+    const listMatch = line.match(/^\s*-\s+(.*)$/);
+    if(listMatch){
+      if(!inList){ html += "<ul style='margin:6px 0 6px 18px; padding:0;'>"; inList = true; }
+      html += `<li style="margin:4px 0">${inlineMd(esc(listMatch[1]))}</li>`;
+      continue;
+    } else if(inList){
+      html += "</ul>";
+      inList = false;
+    }
+
+    if(line.trim()===""){
+      html += "<div style='height:6px'></div>";
+      continue;
+    }
+
+    html += `<div class="meta" style="margin-top:6px">${inlineMd(esc(line))}</div>`;
+  }
+  if(inList) html += "</ul>";
+  return html;
+
+  function inlineMd(s){
+    // 粗體
+    s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    // 連結
+    s = s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return s;
+  }
+}
+
+let PRODUCTS = [];
 
 function render(){
-  const q=document.getElementById("q").value.toLowerCase();
-  const grid=document.getElementById("grid");
-  grid.innerHTML="";
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const grid = document.getElementById("grid");
+  const hint = document.getElementById("hint");
+  grid.innerHTML = "";
 
-  const list=PRODUCTS
-    // ✅ 只認 enabled === TRUE
-    .filter(p=>String(p.enabled).toUpperCase().trim()==="TRUE")
-    .filter(p=>String(p.status||"")!=="hidden")
-    .filter(p=>{
-      const text=(p.name+p.sku+p.search_keyword+p.category_path).toLowerCase();
-      return text.includes(q);
-    });
+  const list = PRODUCTS
+    // ✅ 只認 enabled（true / TRUE）
+    .filter(p => isEnabled(p.enabled))
+    // ✅ hidden 不顯示
+    .filter(p => normStatus(p.status) !== "hidden")
+    // ✅ 搜尋：也把 spec/options/note 含進去
+    .filter(p => {
+      if(!q) return true;
+      const hay = [
+        p.name, p.sku, p.search_keyword, p.search_keywords,
+        p.category_path, p.note, p.spec, p.options
+      ].map(x=>String(x||"").toLowerCase()).join(" ");
+      return hay.includes(q);
+    })
+    // sort
+    .sort((a,b)=> Number(a.sort||9999) - Number(b.sort||9999));
 
   for(const p of list){
-    const status=p.status||"in_stock";
-    const sold=status==="sold_out";
+    const status = normStatus(p.status);
+    const sold = status === "sold_out";
+    const optLines = optionsToText(p.options || "");
 
-    const opt=optionsToText(p.options||"");
+    const card = document.createElement("div");
+    card.className = "card";
 
-    const card=document.createElement("div");
-    card.className="card";
-    card.innerHTML=`
-      <div class="thumb">${p.image_url?`<img src="${p.image_url}">`:"無圖片"}</div>
-      <div class="name">${escapeHtml(p.name)}</div>
-      <div class="meta">編號：${escapeHtml(p.sku)}</div>
+    const img = p.image_url ? `<img src="${p.image_url}" alt="${escapeHtml(p.name||"")}">` : "";
+
+    card.innerHTML = `
+      <div class="thumb">${img || "無圖片"}</div>
+      <div class="name">${escapeHtml(p.name || "")}</div>
+      <div class="meta">編號：${escapeHtml(p.sku || "")}</div>
 
       <div class="statusline">
         <span class="badge ${statusClass(status)}">${statusLabel(status)}</span>
-        <span class="badge price">NT$ ${p.price}</span>
+        <span class="badge price">NT$ ${Number(p.price || 0)}</span>
       </div>
 
-      ${p.spec?`<div class="meta">規格：${escapeHtml(p.spec)}</div>`:""}
+      ${p.spec ? `<div class="meta">規格：${escapeHtml(p.spec)}</div>` : ""}
 
       ${
-        opt.length?
-        `<div class="meta">
-          ${opt.map(g=>`${g.name}：${g.items.join("、")}`).join("<br>")}
-        </div>`:""
+        optLines.length
+          ? `<div class="meta">
+              ${optLines.map(g => `${escapeHtml(g.name)}：${g.items.map(escapeHtml).join("、")}`).join("<br>")}
+            </div>`
+          : ""
       }
 
-      ${p.note?`<div class="meta">${escapeHtml(p.note)}</div>`:""}
+      ${p.note ? `<div class="meta">${escapeHtml(p.note)}</div>` : ""}
 
-      <a class="btn ${sold?"disabled":""}" href="/product.html?sku=${p.sku}">
-        ${sold?"已售完":"查看 / 選項"}
+      <a class="btn ${sold ? "disabled" : ""}" href="/product.html?sku=${encodeURIComponent(p.sku || "")}">
+        ${sold ? "已售完" : "查看 / 選項"}
       </a>
     `;
+
     grid.appendChild(card);
   }
+
+  hint.textContent = list.length ? `顯示 ${list.length} 筆` : "沒有符合的商品（或都未上架）。";
 }
 
 async function init(){
-  const [products,pub]=await Promise.all([
-    fetchSheet(SHEET_PRODUCTS),
-    fetchSheet(SHEET_PUBLIC)
-  ]);
-  PRODUCTS=products;
+  try{
+    const [products, pub] = await Promise.all([
+      fetchSheet(SHEET_PRODUCTS),
+      fetchSheet(SHEET_PUBLIC)
+    ]);
+    PRODUCTS = products || [];
 
-  const bannerRow=pub.find(r=>String(r.key).trim()==="products_banner" && String(r.enabled).toUpperCase()==="TRUE");
-  if(bannerRow){
-    const box=document.getElementById("banner");
-    box.style.display="block";
-    box.innerHTML=`<h3>${bannerRow.title}</h3>${bannerRow.content_md||""}`;
+    // 公告：找 key=products_banner 且 enabled=true/TRUE
+    const bannerRow = (pub || [])
+      .filter(r => isEnabled(r.enabled))
+      .sort((a,b)=> Number(a.sort||9999) - Number(b.sort||9999))
+      .find(r => String(r.key || "").trim() === "products_banner");
+
+    if(bannerRow){
+      const box = document.getElementById("banner");
+      box.style.display = "block";
+      box.innerHTML = `<h3>${escapeHtml(bannerRow.title || "公告")}</h3>` + mdToHtml(bannerRow.content_md || "");
+    }
+
+    document.getElementById("q").addEventListener("input", render);
+    render();
+  }catch(e){
+    document.getElementById("hint").textContent = "讀取失敗：請確認 Google Sheets 已發佈到網路，且工作表名稱正確。";
+    console.error(e);
   }
-
-  document.getElementById("q").addEventListener("input",render);
-  render();
 }
 
 init();
-
 </script>
+
 </body>
 </html>
