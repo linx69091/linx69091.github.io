@@ -2,262 +2,245 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>商品 / 作品</title>
-
   <style>
     :root{
-      --bg:#f6f7fb;
+      --bg:#f5f6f8;
       --card:#ffffff;
-      --text:#111827;
+      --text:#111;
       --muted:#6b7280;
-      --border:#e5e7eb;
-      --primary:#1d4ed8;
-      --primary-weak:#e8f0ff;
-      --danger:#dc2626;
-      --danger-weak:#ffe8e8;
-      --radius:18px;
+      --line:#e5e7eb;
+      --blue:#1a73e8;
+      --blue-weak:#e8f1ff;
+      --red:#d93025;
+      --red-weak:#ffe9e9;
     }
-    *{ box-sizing:border-box; }
+    *{box-sizing:border-box}
     body{
       margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
       background:var(--bg);
       color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
     }
-    a{ color:inherit; text-decoration:none; }
+    a{color:inherit;text-decoration:none}
     .wrap{
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 18px 18px 40px;
+      max-width:1400px;
+      margin:24px auto 60px;
+      padding:0 18px;
     }
 
-    /* header */
     .topbar{
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
-      margin-bottom: 14px;
-    }
-    .topbar a{
-      color:#111;
+      margin-bottom:14px;
+      color:#374151;
       font-weight:600;
     }
+    .topbar a{opacity:.85}
+    .topbar a:hover{opacity:1}
 
-    /* announcement */
-    .announce{
-      background: #f3f4f6;
-      border:1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 18px;
-      margin: 10px 0 14px;
+    /* banner */
+    .banner{
+      background:#f0f2f5;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:18px 18px;
+      margin:12px 0 14px;
     }
-    .announce h2{
+    .banner h3{
       margin:0 0 10px;
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: .2px;
+      font-size:20px;
+      letter-spacing:.5px;
     }
-    .announce .content{
+    /* ✅ 公告內容換行 */
+    #bannerContent{
+      white-space:pre-line;
+      line-height:1.7;
       color:#111827;
-      font-size: 15px;
-      line-height: 1.7;
-      white-space: normal;
+      min-height:1px;
     }
-    .announce .content ul{
-      margin: 8px 0 0 18px;
-      padding:0;
-    }
-    .announce .content li{
-      margin: 4px 0;
-    }
+    #bannerContent ul{margin:8px 0 0 20px}
+    #bannerContent li{margin:4px 0}
 
-    /* search + categories (搜尋在上，分類在下) */
-    .controls{
-      margin: 10px 0 14px;
+    /* ✅ 搜尋在上、分類在下 */
+    .searchRow{
+      margin:10px 0 10px;
     }
-    .searchbox{
+    .search{
       width:100%;
       background:var(--card);
-      border:1px solid var(--border);
-      border-radius: 999px;
-      padding: 12px 16px;
-      font-size: 15px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px 12px;
+    }
+    .search input{
+      width:100%;
+      border:none;
       outline:none;
+      font-size:15px;
+      background:transparent;
+    }
+    .catsRow{
+      margin:0 0 14px;
     }
     .cats{
-      margin-top: 10px;
       display:flex;
+      gap:8px;
       flex-wrap:wrap;
-      gap:10px;
-      align-items:center;
+      justify-content:flex-end;
     }
-    .pill{
-      border:1px solid var(--border);
-      background:#fff;
+    .chip{
+      border:1px solid var(--line);
+      background:var(--card);
       border-radius:999px;
-      padding: 8px 14px;
-      font-size: 14px;
-      font-weight: 650;
-      color:#111;
+      padding:8px 12px;
+      font-size:14px;
+      font-weight:700;
       cursor:pointer;
+      color:#111827;
       user-select:none;
     }
-    .pill.active{
-      border-color:#93c5fd;
-      background:#eef2ff;
-      color:#1d4ed8;
+    .chip.active{
+      border-color:#a7c3ff;
+      background:#eef4ff;
+      color:#1a5bd8;
     }
 
-    /* grid */
+    /* ✅ 修正分類頁跑版：auto-fit -> auto-fill，保留空欄位，不讓單張卡撐爆 */
     .grid{
       display:grid;
-      gap:18px;
-      /* 這裡用 auto-fit，不會因分類後只剩1個商品就「撐爆」整頁 */
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      align-items: stretch;
+      gap:16px;
+      grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
     }
 
-    /* card */
     .card{
       background:var(--card);
-      border:1px solid var(--border);
-      border-radius: var(--radius);
+      border:1px solid var(--line);
+      border-radius:18px;
       overflow:hidden;
+      box-shadow:0 2px 10px rgba(0,0,0,.03);
       display:flex;
       flex-direction:column;
-      min-height: 100%;
+      min-height:410px;
     }
-
-    /* ✅ 固定縮圖比例，避免分類頁爆大圖 */
     .thumb{
-      width:100%;
-      aspect-ratio: 4 / 3;
-      background:#f8fafc;
-      border-bottom:1px solid var(--border);
+      background:#f3f4f6;
+      aspect-ratio:16/10;
       overflow:hidden;
-      display:flex;
-      align-items:center;
-      justify-content:center;
     }
     .thumb img{
       width:100%;
       height:100%;
-      object-fit: contain;
+      object-fit:cover;
       display:block;
     }
-
-    .card-body{
-      padding: 14px 14px 14px;
+    .content{
+      padding:14px 14px 16px;
       display:flex;
       flex-direction:column;
-      gap: 10px;
+      gap:10px;
+      flex:1;
     }
-    .title{
-      font-size: 22px;
-      font-weight: 900;
-      margin:0;
-      line-height: 1.15;
+    .name{
+      font-size:20px;
+      font-weight:900;
+      letter-spacing:.2px;
     }
     .sku{
-      margin:0;
       color:var(--muted);
-      font-weight:600;
+      font-size:14px;
+      font-weight:700;
     }
 
-    .row{
+    .badges{
       display:flex;
       gap:10px;
       align-items:center;
       flex-wrap:wrap;
     }
-
-    /* badges */
     .badge{
       display:inline-flex;
       align-items:center;
       gap:6px;
+      padding:6px 10px;
       border-radius:999px;
-      padding: 6px 10px;
-      font-weight:800;
-      border:1px solid var(--border);
+      border:1px solid var(--line);
       background:#fff;
-      line-height: 1;
       white-space:nowrap;
+      font-weight:900;
     }
-    /* 你說「可購買」太大：這裡固定回較小字級 */
-    .badge.status{
-      font-size: 12px;
-      padding: 6px 10px;
-      border-color:#bfdbfe;
-      background:#eff6ff;
-      color:#1d4ed8;
+    .badge.stock{
+      background:var(--blue-weak);
+      border-color:#bcd4ff;
+      color:#1a5bd8;
+      font-size:12px;
+      padding:4px 9px;
     }
 
-    /* 價格：維持基本價原本大小，不另外放大特價 */
-    .badge.price{
-      font-size: 20px;
-      padding: 8px 12px;
-      border-color:#bfdbfe;
-      background:#eff6ff;
-      color:#1d4ed8;
-    }
-    .price-wrap{
+    .priceRow{
       display:flex;
       align-items:center;
       gap:10px;
       flex-wrap:wrap;
     }
-    .base-strike{
-      color:#9ca3af;
-      text-decoration: line-through;
-      font-weight:800;
+    .price{
+      display:inline-flex;
+      align-items:center;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:900;
+      border:1px solid #bcd4ff;
+      background:var(--blue-weak);
+      color:#1a5bd8;
+      font-size:16px;
+      line-height:1;
     }
-    .badge.sale{
-      /* ✅ 不放大字，跟 badge.price 一樣大小系統 */
-      font-size: 20px;
-      padding: 8px 12px;
-      border-color:#fecaca;
-      background: #fff1f2;
-      color: var(--danger);
+    .oldPrice{
+      color:#9ca3af;
+      text-decoration:line-through;
+      font-weight:900;
+      font-size:13px;
+      padding:0;
+      border:none;
+      background:transparent;
+    }
+    .specialPrice{
+      border:1px solid #ffb4b4;
+      background:var(--red-weak);
+      color:var(--red);
+      font-size:16px;
+      line-height:1;
     }
 
     .meta{
-      color:#374151;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    /* ✅ options 換行：每個群組一行（顏色/版本…） */
-    .opts{
-      margin-top: 2px;
-      color:#374151;
+      color:#4b5563;
       font-size:14px;
-      line-height:1.6;
-      white-space: normal;
+      line-height:1.5;
+      min-height:52px;
     }
-    .opts .line{ display:block; }
+    .meta .line{margin:4px 0}
 
-    /* button */
     .btn{
-      width:100%;
-      border:none;
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-weight:900;
-      font-size: 16px;
-      background: #1a73e8;
+      margin-top:auto;
+      display:inline-flex;
+      justify-content:center;
+      align-items:center;
+      background:var(--blue);
       color:#fff;
+      border:none;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:15px;
+      font-weight:900;
       cursor:pointer;
     }
-    .btn:active{ transform: translateY(1px); }
 
-    /* footer count */
-    .count{
-      margin-top: 14px;
-      color: var(--muted);
-      font-weight: 650;
+    .foot{
+      margin-top:10px;
+      color:#6b7280;
+      font-size:13px;
     }
   </style>
 </head>
@@ -269,423 +252,290 @@
       <a href="./cart.html">前往購物車 →</a>
     </div>
 
-    <!-- 公告 -->
-    <section class="announce" id="announce" style="display:none;">
-      <h2 id="announceTitle">公告</h2>
-      <div class="content" id="announceContent"></div>
-    </section>
+    <div class="banner">
+      <h3>公告</h3>
+      <div id="bannerContent"></div>
+    </div>
 
-    <!-- 搜尋 + 分類（搜尋在上，分類在下） -->
-    <section class="controls">
-      <input id="q" class="searchbox" placeholder="搜尋：名稱 / 編號 / 關鍵字…" />
+    <div class="searchRow">
+      <div class="search">
+        <input id="q" placeholder="搜尋：名稱 / 編號 / 關鍵字..." />
+      </div>
+    </div>
+
+    <div class="catsRow">
       <div class="cats" id="cats"></div>
-    </section>
+    </div>
 
-    <!-- 商品列表 -->
-    <section class="grid" id="grid"></section>
-    <div class="count" id="count"></div>
+    <div class="grid" id="grid"></div>
+    <div class="foot" id="count"></div>
   </div>
 
-  <script>
-    /********************
-     * ✅ 你只要改這裡
-     ********************/
-    const SHEET_ID = "1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
-    const GID_PRODUCTS   = "YOUR_GID_PRODUCTS";
-    const GID_CATEGORIES = "YOUR_GID_CATEGORIES";
-    const GID_PUBLIC     = "YOUR_GID_PUBLIC";
+<script>
+  const SHEET_ID = "1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
+  const BASE = `https://opensheet.elk.sh/${SHEET_ID}`;
 
-    const csvUrl = (gid) =>
-      `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+  const state = {
+    products: [],
+    categories: [],
+    activeCat: "全部",
+    q: ""
+  };
 
-    /********************
-     * CSV parser (簡單但夠用)
-     ********************/
-    function parseCSV(text){
-      const rows = [];
-      let row = [];
-      let cur = "";
-      let inQuotes = false;
+  function isTrue(v){
+    return String(v ?? "").trim().toUpperCase() === "TRUE";
+  }
+  function safeText(v){
+    return String(v ?? "").trim();
+  }
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
 
-      for (let i=0;i<text.length;i++){
-        const ch = text[i];
-        const next = text[i+1];
+  // ✅ 公告：只看 enabled=TRUE，優先 key=products_banner
+  async function loadBanner(){
+    const el = document.getElementById("bannerContent");
+    el.textContent = "";
 
-        if (ch === '"' ){
-          if (inQuotes && next === '"'){
-            cur += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-          continue;
+    let rows = [];
+    try{
+      const res = await fetch(BASE + "/Public");
+      rows = await res.json();
+    }catch(e){
+      return;
+    }
+
+    const enabledRows = rows.filter(r => isTrue(r.enabled));
+    const bannerRow =
+      enabledRows.find(r => safeText(r.key) === "products_banner")
+      || enabledRows[0];
+
+    // ✅ 修正：你的欄位是 content_md（兼容 content）
+    const content = safeText(bannerRow?.content_md ?? bannerRow?.content);
+    if(!content) return;
+
+    const lines = content.split(/\r?\n/);
+    const listCount = lines.filter(l => l.trim().startsWith("-")).length;
+
+    if(listCount >= 2){
+      const head = [];
+      const items = [];
+      for(const line of lines){
+        const t = line.trim();
+        if(!t) continue;
+        if(t.startsWith("-")){
+          items.push(t.replace(/^-+\s*/, ""));
+        }else{
+          head.push(t);
         }
-        if (!inQuotes && ch === ','){
-          row.push(cur);
-          cur = "";
-          continue;
+      }
+      let html = "";
+      if(head.length) html += head.map(h => `<div>${escapeHtml(h)}</div>`).join("");
+      if(items.length){
+        html += "<ul>" + items.map(i => `<li>${escapeHtml(i)}</li>`).join("") + "</ul>";
+      }
+      el.innerHTML = html;
+    }else{
+      el.textContent = content;
+    }
+  }
+
+  function optionsToHtml(text){
+    const raw = safeText(text);
+    if(!raw) return "";
+
+    const groups = raw.split(";").map(s=>s.trim()).filter(Boolean);
+    const lines = [];
+
+    for(const g of groups){
+      const idx = g.indexOf(":");
+      if(idx === -1) continue;
+
+      const label = g.slice(0, idx).trim();
+      const values = g.slice(idx+1).trim();
+      if(!label || !values) continue;
+
+      const items = values.split("|").map(x=>x.trim()).filter(Boolean).map(x=>{
+        const [name, price] = x.split("=").map(y => (y??"").trim());
+        if(!name) return "";
+        if(price && price !== "0"){
+          return `${escapeHtml(name)}（+${escapeHtml(price)}）`;
         }
-        if (!inQuotes && (ch === '\n' || ch === '\r')){
-          if (ch === '\r' && next === '\n') i++;
-          row.push(cur);
-          rows.push(row);
-          row = [];
-          cur = "";
-          continue;
-        }
-        cur += ch;
+        return escapeHtml(name);
+      }).filter(Boolean);
+
+      if(items.length){
+        lines.push(`<div class="line">${escapeHtml(label)}：${items.join("、")}</div>`);
       }
-      if (cur.length || row.length){
-        row.push(cur);
-        rows.push(row);
-      }
-      return rows;
+    }
+    return lines.join("");
+  }
+
+  async function loadCategories(){
+    let rows = [];
+    try{
+      const res = await fetch(BASE + "/Categories");
+      rows = await res.json();
+    }catch(e){
+      rows = [];
     }
 
-    function rowsToObjects(rows){
-      if (!rows || rows.length < 2) return [];
-      const header = rows[0].map(h => (h||"").trim());
-      const out = [];
-      for (let i=1;i<rows.length;i++){
-        const r = rows[i];
-        if (r.every(c => (c||"").trim()==="")) continue;
-        const obj = {};
-        header.forEach((h, idx) => obj[h] = (r[idx] ?? "").trim());
-        out.push(obj);
+    const enabled = rows.filter(r => isTrue(r.enabled));
+    const cats = enabled.map(r => ({
+      name: safeText(r.name || r.title || r.category || r.label),
+      path: safeText(r.path || r.category_path || r.key || r.value),
+      sort: Number(r.sort || 9999)
+    })).filter(c => c.name && c.path);
+
+    cats.sort((a,b)=>a.sort-b.sort);
+    state.categories = cats;
+  }
+
+  async function loadProducts(){
+    const res = await fetch(BASE + "/Products");
+    const rows = await res.json();
+
+    state.products = rows
+      .filter(r => isTrue(r.enabled))
+      .map(r => ({
+        sku: safeText(r.sku),
+        name: safeText(r.name),
+        category: safeText(r.category_path),
+        spec: safeText(r.spec),
+        options: safeText(r.options),
+        note: safeText(r.note),
+        price: Number(r.price || 0),
+        currency: safeText(r.currency || "TWD"),
+        price_override: Number(r.price_override || 0),
+        image_url: safeText(r.image_url || r.image || "")
+      }));
+  }
+
+  function buildCategoryUI(){
+    const el = document.getElementById("cats");
+    el.innerHTML = "";
+
+    const chips = [];
+    chips.push({name:"全部", path:"__ALL__"});
+
+    if(state.categories.length){
+      for(const c of state.categories){
+        chips.push({name:c.name, path:c.path});
       }
-      return out;
-    }
-
-    async function fetchSheetObjects(gid){
-      const res = await fetch(csvUrl(gid), { cache: "no-store" });
-      const text = await res.text();
-      return rowsToObjects(parseCSV(text));
-    }
-
-    /********************
-     * 公告 content_md 渲染（支援 - 清單 + 換行）
-     ********************/
-    function renderContentMD(md){
-      const lines = (md || "").split(/\r?\n/);
-      const isList = lines.some(l => l.trim().startsWith("- "));
-      if (isList){
-        const ul = document.createElement("ul");
-        lines.forEach(l => {
-          const t = l.trim();
-          if (!t) return;
-          if (t.startsWith("- ")){
-            const li = document.createElement("li");
-            li.textContent = t.slice(2);
-            ul.appendChild(li);
-          } else {
-            // 非 - 開頭：當作一般段落
-            const li = document.createElement("li");
-            li.textContent = t;
-            ul.appendChild(li);
-          }
-        });
-        return ul;
-      } else {
-        // 一般文字：保留換行
-        const div = document.createElement("div");
-        div.innerHTML = (md || "")
-          .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-          .replace(/\r?\n/g, "<br>");
-        return div;
+    }else{
+      const set = new Set(state.products.map(p=>p.category).filter(Boolean));
+      for(const path of Array.from(set)){
+        chips.push({name:path, path});
       }
     }
 
-    /********************
-     * options 字串解析
-     * "顏色:黑=0|棕=0;版本:標準=0|加大=150"
-     ********************/
-    function parseOptions(optionsStr){
-      const s = (optionsStr || "").trim();
-      if (!s) return [];
-      // 去尾端多餘 ;
-      const clean = s.replace(/;+\s*$/,"");
-      const groups = clean.split(";").map(x => x.trim()).filter(Boolean);
-      return groups.map(g => {
-        const [labelPart, valuesPart] = g.split(":");
-        const label = (labelPart || "").trim();
-        const values = (valuesPart || "").split("|").map(v => v.trim()).filter(Boolean).map(v => {
-          const [name, addStr] = v.split("=");
-          const add = Number((addStr || "0").trim()) || 0;
-          return { name: (name||"").trim(), add };
-        }).filter(x => x.name);
-        return { label, values };
-      }).filter(x => x.label && x.values.length);
-    }
-
-    function formatOptionsLines(groups){
-      // 顏色：黑、棕
-      // 版本：標準、加大（+150）
-      return groups.map(g => {
-        const items = g.values.map(v => v.add > 0 ? `${v.name}（+${v.add}）` : v.name);
-        return `${g.label}：${items.join("、")}`;
-      });
-    }
-
-    /********************
-     * enabled 判斷：只認 TRUE
-     ********************/
-    function isEnabledTrue(v){
-      return String(v || "").trim().toUpperCase() === "TRUE";
-    }
-
-    /********************
-     * 狀態中文（你之前問過）
-     ********************/
-    const STATUS_ZH = {
-      in_stock: "可購買",
-      sold_out: "售完",
-      preorder: "預購",
-      hidden: "隱藏"
-    };
-
-    /********************
-     * 主流程
-     ********************/
-    let PRODUCTS = [];
-    let CATEGORIES = [];
-    let activeCat = "全部";
-
-    const $grid = document.getElementById("grid");
-    const $count = document.getElementById("count");
-    const $q = document.getElementById("q");
-    const $cats = document.getElementById("cats");
-
-    function buildCats(){
-      $cats.innerHTML = "";
-      const make = (name) => {
-        const b = document.createElement("button");
-        b.className = "pill" + (activeCat===name ? " active" : "");
-        b.type = "button";
-        b.textContent = name;
-        b.onclick = () => {
-          activeCat = name;
-          [...$cats.children].forEach(x => x.classList.remove("active"));
-          b.classList.add("active");
-          render();
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        };
-        return b;
+    for(const c of chips){
+      const btn = document.createElement("div");
+      btn.className = "chip" + ((state.activeCat === c.name) ? " active" : "");
+      btn.textContent = c.name;
+      btn.onclick = () => {
+        state.activeCat = c.name;
+        document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));
+        btn.classList.add("active");
+        render();
       };
-
-      $cats.appendChild(make("全部"));
-
-      // 依 Categories 表排序（若沒有就用產品內出現的分類）
-      const catNames = CATEGORIES.length
-        ? CATEGORIES
-            .filter(r => isEnabledTrue(r.enabled))
-            .sort((a,b)=>(Number(a.sort)||9999)-(Number(b.sort)||9999))
-            .map(r => (r.name || r.title || "").trim())
-            .filter(Boolean)
-        : Array.from(new Set(PRODUCTS.map(p => (p.category_path||"").trim()).filter(Boolean)));
-
-      catNames.forEach(n => $cats.appendChild(make(n)));
+      el.appendChild(btn);
     }
+  }
 
-    function matchQuery(p, q){
-      const hay = [
-        p.name, p.sku, p.search_keyword, p.category_path, p.spec, p.note
-      ].join(" ").toLowerCase();
-      return hay.includes(q.toLowerCase());
+  function passFilter(p){
+    const q = state.q.trim().toLowerCase();
+    if(q){
+      const hay = `${p.name} ${p.sku} ${p.note}`.toLowerCase();
+      if(!hay.includes(q)) return false;
     }
-
-    function getDisplayPrice(p){
-      const base = Number(p.price || 0) || 0;
-      const override = Number(p.price_override || 0) || 0;
-      const useOverride = override > 0;
-      return {
-        base,
-        override: useOverride ? override : null
-      };
+    if(state.activeCat !== "全部"){
+      if(state.categories.length){
+        const target = state.categories.find(c => c.name === state.activeCat);
+        const path = target?.path || state.activeCat;
+        if(p.category !== path) return false;
+      }else{
+        if(p.category !== state.activeCat) return false;
+      }
     }
+    return true;
+  }
 
-    function productCard(p){
-      const card = document.createElement("article");
+  function render(){
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
+
+    const list = state.products.filter(passFilter);
+
+    for(const p of list){
+      const card = document.createElement("div");
       card.className = "card";
 
-      const thumb = document.createElement("div");
-      thumb.className = "thumb";
-      const img = document.createElement("img");
-      img.alt = p.name || "";
-      img.loading = "lazy";
-      img.src = (p.image_url || p.image || "").trim() || "";
-      thumb.appendChild(img);
+      const hasSpecial = !!p.price_override && p.price_override > 0;
 
-      const body = document.createElement("div");
-      body.className = "card-body";
+      const priceHTML = hasSpecial
+        ? `
+          <div class="priceRow">
+            <span class="oldPrice">NT$ ${p.price}</span>
+            <span class="price specialPrice">🔥 特價 NT$ ${p.price_override}</span>
+          </div>
+        `
+        : `
+          <div class="priceRow">
+            <span class="price">NT$ ${p.price}</span>
+          </div>
+        `;
 
-      const h = document.createElement("h3");
-      h.className = "title";
-      h.textContent = p.name || "";
+      const optHTML = optionsToHtml(p.options);
+      const metaLines = [
+        p.spec ? `<div class="line">規格：${escapeHtml(p.spec)}</div>` : "",
+        optHTML ? optHTML : ""
+      ].filter(Boolean).join("");
 
-      const sku = document.createElement("p");
-      sku.className = "sku";
-      sku.textContent = `編號：${p.sku || "-"}`;
+      card.innerHTML = `
+        <div class="thumb">
+          <img src="${escapeHtml(p.image_url)}" alt="">
+        </div>
+        <div class="content">
+          <div>
+            <div class="name">${escapeHtml(p.name)}</div>
+            <div class="sku">編號：${escapeHtml(p.sku)}</div>
+          </div>
 
-      const row1 = document.createElement("div");
-      row1.className = "row";
+          <div class="badges">
+            <span class="badge stock">可購買</span>
+          </div>
 
-      const st = (p.status || "").trim();
-      const stText = STATUS_ZH[st] || st || "";
-      const statusBadge = document.createElement("span");
-      statusBadge.className = "badge status";
-      statusBadge.textContent = stText || "可購買";
-      row1.appendChild(statusBadge);
+          ${priceHTML}
 
-      const priceWrap = document.createElement("div");
-      priceWrap.className = "price-wrap";
+          <div class="meta">
+            ${metaLines || ""}
+          </div>
 
-      const { base, override } = getDisplayPrice(p);
-
-      if (override !== null){
-        const baseStrike = document.createElement("span");
-        baseStrike.className = "base-strike";
-        baseStrike.textContent = `NT$ ${base}`;
-        priceWrap.appendChild(baseStrike);
-
-        const sale = document.createElement("span");
-        sale.className = "badge sale";
-        sale.textContent = `🔥 特價 NT$ ${override}`;
-        priceWrap.appendChild(sale);
-      } else {
-        const price = document.createElement("span");
-        price.className = "badge price";
-        price.textContent = `NT$ ${base}`;
-        priceWrap.appendChild(price);
-      }
-      row1.appendChild(priceWrap);
-
-      const meta = document.createElement("div");
-      meta.className = "meta";
-
-      // 規格
-      if ((p.spec || "").trim()){
-        const d = document.createElement("div");
-        d.textContent = `規格：${p.spec.trim()}`;
-        meta.appendChild(d);
-      }
-
-      // options（換行顯示）
-      const groups = parseOptions(p.options || "");
-      if (groups.length){
-        const opts = document.createElement("div");
-        opts.className = "opts";
-        const lines = formatOptionsLines(groups);
-        lines.forEach(line => {
-          const s = document.createElement("span");
-          s.className = "line";
-          s.textContent = line;
-          opts.appendChild(s);
-        });
-        meta.appendChild(opts);
-      }
-
-      // note（如果你有要顯示就留著；沒有就不動）
-      if ((p.note || "").trim()){
-        const d = document.createElement("div");
-        d.textContent = `備註：${p.note.trim()}`;
-        meta.appendChild(d);
-      }
-
-      const btn = document.createElement("button");
-      btn.className = "btn";
-      btn.type = "button";
-      btn.textContent = "查看 / 選項";
-      btn.onclick = () => {
-        // 你的詳情頁網址如果不同，改這裡
-        const url = `./product.html?sku=${encodeURIComponent(p.sku || "")}`;
-        window.location.href = url;
-      };
-
-      body.appendChild(h);
-      body.appendChild(sku);
-      body.appendChild(row1);
-      if (meta.childNodes.length) body.appendChild(meta);
-      body.appendChild(btn);
-
-      card.appendChild(thumb);
-      card.appendChild(body);
-      return card;
+          <button class="btn" onclick="location.href='./product.html?sku=${encodeURIComponent(p.sku)}'">查看 / 選項</button>
+        </div>
+      `;
+      grid.appendChild(card);
     }
 
-    function render(){
-      const q = ($q.value || "").trim();
-      let list = PRODUCTS
-        .filter(p => isEnabledTrue(p.enabled))   // ✅ 只吃 TRUE
-        .filter(p => (p.status || "").trim() !== "hidden");
+    document.getElementById("count").textContent = `顯示 ${list.length} 筆`;
+  }
 
-      if (activeCat !== "全部"){
-        list = list.filter(p => (p.category_path || "").trim() === activeCat);
-      }
-      if (q){
-        list = list.filter(p => matchQuery(p, q));
-      }
+  document.getElementById("q").addEventListener("input", (e)=>{
+    state.q = e.target.value || "";
+    render();
+  });
 
-      // sort（小到大）
-      list.sort((a,b)=>(Number(a.sort)||9999)-(Number(b.sort)||9999));
-
-      $grid.innerHTML = "";
-      list.forEach(p => $grid.appendChild(productCard(p)));
-      $count.textContent = `顯示 ${list.length} 筆`;
-    }
-
-    async function loadAnnouncement(){
-      // Public sheet: enabled, sort, key, title, content_md
-      const rows = await fetchSheetObjects(GID_PUBLIC);
-      const banner = rows
-        .filter(r => isEnabledTrue(r.enabled))
-        .filter(r => (r.key || "").trim() === "products_banner")
-        .sort((a,b)=>(Number(a.sort)||9999)-(Number(b.sort)||9999))[0];
-
-      if (!banner) return;
-
-      const title = (banner.title || "公告").trim();
-      const md = (banner.content_md || "").trim();
-
-      const $sec = document.getElementById("announce");
-      const $t = document.getElementById("announceTitle");
-      const $c = document.getElementById("announceContent");
-
-      $t.textContent = title;
-
-      // ✅ 之前你「有標題但沒內容」就是這段常見被覆蓋或沒 append
-      $c.innerHTML = "";
-      if (md){
-        $c.appendChild(renderContentMD(md));
-      } else {
-        // 沒內容就整塊不顯示，避免空框
-        return;
-      }
-      $sec.style.display = "";
-    }
-
-    async function init(){
-      // 先載公告（不影響商品）
-      loadAnnouncement().catch(console.error);
-
-      // 載商品 / 分類
-      const [products, categories] = await Promise.all([
-        fetchSheetObjects(GID_PRODUCTS),
-        fetchSheetObjects(GID_CATEGORIES),
-      ]);
-
-      PRODUCTS = products;
-      CATEGORIES = categories;
-
-      buildCats();
-      render();
-
-      $q.addEventListener("input", () => render());
-    }
-
-    init().catch(err => {
-      console.error(err);
-      document.getElementById("count").textContent = "讀取失敗：請檢查 Sheet 權限與 GID。";
-    });
-  </script>
+  (async function init(){
+    await Promise.all([loadBanner(), loadProducts(), loadCategories()]);
+    buildCategoryUI();
+    render();
+  })();
+</script>
 </body>
 </html>
