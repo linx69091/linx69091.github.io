@@ -61,32 +61,13 @@ h1{margin:16px 0 24px;font-size:32px}
   object-fit:cover;
 }
 
-.info{
-  flex:1;
-}
-.name{
-  font-weight:900;
-  font-size:18px;
-  margin-bottom:6px;
-}
-.small{
-  font-size:14px;
-  color:var(--muted);
-  margin:3px 0;
-}
-.price{
-  font-weight:900;
-  margin-top:6px;
-}
+.info{flex:1}
+.name{font-weight:900;font-size:18px;margin-bottom:6px}
+.small{font-size:14px;color:var(--muted);margin:3px 0}
+.price{font-weight:900;margin-top:6px}
 
-.strike{
-  text-decoration:line-through;
-  color:#9ca3af;
-  margin-right:8px;
-}
-.special{
-  color:var(--red);
-}
+.strike{text-decoration:line-through;color:#9ca3af;margin-right:8px;font-weight:900}
+.special{color:var(--red);font-weight:900}
 
 .qty{
   width:80px;
@@ -122,16 +103,76 @@ h1{margin:16px 0 24px;font-size:32px}
   font-weight:900;
   cursor:pointer;
 }
+.btn:disabled{
+  background:#cbd5e1;
+  cursor:not-allowed;
+}
 
 .empty{
   text-align:center;
   color:var(--muted);
   padding:40px 0;
 }
+
 .note{
-  margin-top:30px;
+  margin-top:18px;
   color:var(--muted);
   font-size:14px;
+  line-height:1.6;
+}
+
+/* checkout form */
+.formGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+@media (max-width:780px){
+  .formGrid{grid-template-columns:1fr}
+}
+.field{margin:10px 0}
+.field label{
+  display:block;
+  font-weight:900;
+  margin:0 0 6px;
+}
+input, textarea, select{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid #dbe2ea;
+  outline:none;
+  font-size:15px;
+  background:#fff;
+}
+textarea{min-height:110px;resize:vertical}
+input:focus, textarea:focus, select:focus{
+  border-color:#bcd4ff;
+  box-shadow:0 0 0 3px rgba(26,115,232,0.12);
+}
+.hr{
+  height:1px;
+  background:#eef2f7;
+  border:none;
+  margin:16px 0;
+}
+.success{
+  background:#ecfdf5;
+  border:1px solid #bbf7d0;
+  color:#065f46;
+  padding:12px;
+  border-radius:12px;
+  font-weight:800;
+  line-height:1.6;
+}
+.error{
+  background:#fff1f2;
+  border:1px solid #fecdd3;
+  color:#9f1239;
+  padding:12px;
+  border-radius:12px;
+  font-weight:800;
+  line-height:1.6;
 }
 </style>
 </head>
@@ -144,29 +185,61 @@ h1{margin:16px 0 24px;font-size:32px}
   <div id="cartArea"></div>
 
   <div class="note">
-    提示：這個購物車目前存在於你的瀏覽器(localStorage)。<br>
-    尚未串接付款，結帳會跳轉到測試表單（下階段串接 Google Forms）。
+    提示：購物車存在於你的瀏覽器（localStorage）。<br>
+    結帳送出後會直接寫入你的 Google Sheet（Orders 分頁）。
   </div>
 </div>
 
 <script>
+/* ===========================
+   設定：Sheet 寫入 API
+=========================== */
+const ORDERS_API = "https://script.google.com/macros/s/AKfycbxG_ewTCE65Rp1KAE1h-D7f5_LIwVmGdjRQmCLIts6D0sVLCZQAB6QwgKUdiaMrLKvJcA/exec";
+
+// ⚠️ 這串要跟 Apps Script 裡 CONFIG.API_TOKEN 一模一樣
+const API_TOKEN  = "CHANGE_ME_TO_MATCH_YOUR_SCRIPT_TOKEN";
+
+/* ===========================
+   購物車 localStorage
+=========================== */
 const CART_KEY="CART_V1";
 
 function readCart(){
-  try{
-    return JSON.parse(localStorage.getItem(CART_KEY) || "[]");
-  }catch(e){
-    return [];
-  }
+  try{ return JSON.parse(localStorage.getItem(CART_KEY) || "[]"); }
+  catch(e){ return []; }
 }
 function writeCart(items){
   localStorage.setItem(CART_KEY, JSON.stringify(items||[]));
 }
-
+function clearCart(){
+  localStorage.removeItem(CART_KEY);
+}
 function money(n){
   return "NT$ " + Number(n||0);
 }
 
+/* ===========================
+   訂單文字組裝
+=========================== */
+function buildOrderText(cart){
+  // 人類可讀，落到 Sheet 一格文字
+  return cart.map((it,i)=> {
+    const lines = [];
+    lines.push(`${i+1}. ${it.name}（${it.sku}）`);
+    if(it.options_text) lines.push(`選項：${it.options_text}`);
+    if(it.spec) lines.push(`規格：${it.spec}`);
+    lines.push(`單價：NT$ ${Number(it.unit_price||0)} × ${Number(it.qty||1)} = NT$ ${Number(it.total||0)}`);
+    return lines.join("\n");
+  }).join("\n\n");
+}
+
+function calcTotal(cart){
+  return cart.reduce((s,it)=> s + Number(it.total||0), 0);
+}
+
+/* ===========================
+   UI Render
+=========================== */
 function render(){
   const area = document.getElementById("cartArea");
   const cart = readCart();
@@ -175,37 +248,36 @@ function render(){
   if(!cart.length){
     area.innerHTML = `
       <div class="card empty">
-        購物車目前是空的。可以到商品頁加入範例商品測試。
+        購物車目前是空的。可以到商品頁加入商品測試。
       </div>
     `;
     return;
   }
 
-  let totalAll = 0;
+  let totalAll = calcTotal(cart);
 
-  const card = document.createElement("div");
-  card.className="card";
+  // cart list card
+  const cartCard = document.createElement("div");
+  cartCard.className="card";
 
   cart.forEach((item,index)=>{
-    totalAll += Number(item.total||0);
-
     const div = document.createElement("div");
     div.className="item";
 
+    const priceBlock = item.price_special
+      ? `<span class="strike">${money(item.price_original)}</span>
+         <span class="special">🔥 特價 ${money(item.price_special)}</span>`
+      : `${money(item.price_original)}`;
+
     div.innerHTML=`
       <div class="thumb">
-        ${item.image_url ? `<img src="${item.image_url}">` : ""}
+        ${item.image_url ? `<img src="${item.image_url}" alt="">` : ""}
       </div>
       <div class="info">
         <div class="name">${item.name}</div>
         <div class="small">編號：${item.sku}</div>
         ${item.options_text ? `<div class="small">${item.options_text}</div>`:""}
-        <div class="price">
-          ${item.price_special 
-            ? `<span class="strike">${money(item.price_original)}</span>
-               <span class="special">🔥 特價 ${money(item.price_special)}</span>`
-            : money(item.price_original)}
-        </div>
+        <div class="price">${priceBlock}</div>
         <div class="small">單價 ${money(item.unit_price)}</div>
 
         <div style="margin-top:8px;">
@@ -216,36 +288,99 @@ function render(){
         <div class="remove" data-remove="${index}">移除商品</div>
       </div>
     `;
-    card.appendChild(div);
+    cartCard.appendChild(div);
   });
 
   const totalBox=document.createElement("div");
   totalBox.className="totalBox";
   totalBox.innerHTML=`
     <div class="totalBig">總金額：${money(totalAll)}</div>
-    <button class="btn" id="checkoutBtn">前往結帳</button>
   `;
-  card.appendChild(totalBox);
+  cartCard.appendChild(totalBox);
 
-  area.appendChild(card);
+  area.appendChild(cartCard);
 
-  // 數量修改
+  // checkout card
+  const checkoutCard = document.createElement("div");
+  checkoutCard.className="card";
+  checkoutCard.innerHTML = `
+    <h2 style="margin:0 0 12px;font-size:20px;">結帳資料</h2>
+
+    <div id="msg"></div>
+
+    <div class="formGrid">
+      <div class="field">
+        <label>姓名 *</label>
+        <input id="f_name" placeholder="收件人 / 付款人姓名" />
+      </div>
+
+      <div class="field">
+        <label>Email *</label>
+        <input id="f_email" placeholder="用於聯繫與確認" />
+      </div>
+
+      <div class="field">
+        <label>電話（可選）</label>
+        <input id="f_phone" placeholder="例如 09xx-xxx-xxx" />
+      </div>
+
+      <div class="field">
+        <label>取貨方式（可選）</label>
+        <select id="f_ship">
+          <option value="">（不填）</option>
+          <option value="宅配">宅配</option>
+          <option value="7-11">7-11</option>
+          <option value="全家">全家</option>
+          <option value="面交">面交</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>地址 / 門市資訊（可選）</label>
+      <input id="f_addr" placeholder="宅配地址 或 超商店號 / 門市名稱" />
+    </div>
+
+    <div class="field">
+      <label>備註（可選）</label>
+      <textarea id="f_note" placeholder="例如：希望某天前寄出、顏色想再確認、或其他提醒"></textarea>
+    </div>
+
+    <hr class="hr"/>
+
+    <div class="field">
+      <label>即將送出的訂單內容（預覽）</label>
+      <textarea id="preview" readonly></textarea>
+      <div class="small" style="margin-top:6px;">
+        總金額：<b id="previewTotal"></b>
+      </div>
+    </div>
+
+    <button class="btn" id="btnSubmit">送出訂單（寫入 Google Sheet）</button>
+    <div class="note">
+      送出後會產生訂單編號並清空購物車。<br>
+      若你要加「付款方式」或「自動回信」，下一步也能做。
+    </div>
+  `;
+  area.appendChild(checkoutCard);
+
+  // bind quantity
   document.querySelectorAll(".qty").forEach(input=>{
     input.addEventListener("input",()=>{
       const idx = Number(input.dataset.index);
       const cart = readCart();
-      const item = cart[idx];
-      const newQty = Math.max(1,Number(input.value||1));
+      const it = cart[idx];
+      const newQty = Math.max(1, Number(input.value||1));
 
-      item.qty = newQty;
-      item.total = newQty * item.unit_price;
+      it.qty = newQty;
+      it.total = newQty * Number(it.unit_price||0);
 
       writeCart(cart);
       render();
     });
   });
 
-  // 刪除
+  // bind remove
   document.querySelectorAll("[data-remove]").forEach(btn=>{
     btn.addEventListener("click",()=>{
       const idx = Number(btn.dataset.remove);
@@ -256,9 +391,81 @@ function render(){
     });
   });
 
-  // 結帳
-  document.getElementById("checkoutBtn").addEventListener("click",()=>{
-    alert("下一階段可導向 Google 表單或金流系統。");
+  // preview
+  const preview = document.getElementById("preview");
+  const previewTotal = document.getElementById("previewTotal");
+  preview.value = buildOrderText(cart);
+  previewTotal.textContent = money(calcTotal(cart));
+
+  // submit
+  document.getElementById("btnSubmit").addEventListener("click", async ()=>{
+    const name  = (document.getElementById("f_name").value||"").trim();
+    const email = (document.getElementById("f_email").value||"").trim();
+    const phone = (document.getElementById("f_phone").value||"").trim();
+    const ship  = (document.getElementById("f_ship").value||"").trim();
+    const addr  = (document.getElementById("f_addr").value||"").trim();
+    const note  = (document.getElementById("f_note").value||"").trim();
+
+    const msg = document.getElementById("msg");
+    msg.innerHTML = "";
+
+    if(!name || !email){
+      msg.innerHTML = `<div class="error">請填寫「姓名」與「Email」。</div>`;
+      return;
+    }
+
+    if(API_TOKEN === "CHANGE_ME_TO_MATCH_YOUR_SCRIPT_TOKEN"){
+      msg.innerHTML = `<div class="error">cart.html 尚未設定 API_TOKEN（需與 Apps Script 的 API_TOKEN 相同）。</div>`;
+      return;
+    }
+
+    const cartNow = readCart();
+    if(!cartNow.length){
+      msg.innerHTML = `<div class="error">購物車是空的，無法送出。</div>`;
+      return;
+    }
+
+    const payload = {
+      token: API_TOKEN,
+      customer_name: name,
+      customer_email: email,
+      customer_phone: phone,
+      shipping_method: ship,
+      shipping_address: addr,
+      note: note,
+      order_text: buildOrderText(cartNow),
+      total: calcTotal(cartNow),
+      order_json: {
+        items: cartNow,
+        currency: "TWD"
+      }
+    };
+
+    const btn = document.getElementById("btnSubmit");
+    btn.disabled = true;
+    btn.textContent = "送出中…";
+
+    try{
+      const res = await fetch(ORDERS_API, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if(!data || !data.ok){
+        throw new Error(data?.error || "送出失敗（未知錯誤）");
+      }
+
+      clearCart();
+      msg.innerHTML = `<div class="success">✅ 已送出！你的訂單編號：<b>${data.order_id}</b><br>資料已寫入 Google Sheet（Orders）。</div>`;
+      render(); // 會變空購物車畫面
+
+    }catch(err){
+      msg.innerHTML = `<div class="error">❌ 送出失敗：${String(err.message || err)}<br>請稍後再試，或檢查 Apps Script 權限 / API_TOKEN。</div>`;
+      btn.disabled = false;
+      btn.textContent = "送出訂單（寫入 Google Sheet）";
+    }
   });
 }
 
