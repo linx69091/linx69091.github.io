@@ -183,20 +183,30 @@ input:focus, textarea:focus, select:focus{
   <h1>購物車</h1>
 
   <div id="cartArea"></div>
-  
-  <div class="note">
-  
-  </div>
+
+  <div class="note"></div>
 </div>
 
 <script>
 /* ===========================
-   設定：Sheet 寫入 API
+   Google Form 設定（送出後自動進 Sheet）
 =========================== */
-const ORDERS_API = "https://script.google.com/macros/s/AKfycbxG_ewTCE65Rp1KAE1h-D7f5_LIwVmGdjRQmCLIts6D0sVLCZQAB6QwgKUdiaMrLKvJcA/exec";
+const FORM_ID = "1FAIpQLScE4Fc8Ca6ibjr1FsO2fCMwgeUJmTkb4z7HM47RWWx4nZW3-A";
+const FORM_POST_URL = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`;
 
-// ⚠️ 這串要跟 Apps Script 裡 CONFIG.API_TOKEN 一模一樣
-const API_TOKEN  = "dong-orders-keep-secret-2026-02-19-9f8a7c6b5d";
+// entry 對應（由你提供的預先填入連結推定）
+const ENTRY = {
+  order_id:   "2086201294",
+  order_time: "141884881",
+  items:      "1314159316",
+  total_qty:  "2028682198",
+  total_amt:  "480291083",
+  name:       "1345697916",
+  phone:      "1165222576",
+  store711:   "770415418",
+  lineid:     "668805025",
+  note:       "1857553419",
+};
 
 /* ===========================
    購物車 localStorage
@@ -218,7 +228,7 @@ function money(n){
 }
 
 /* ===========================
-   訂單文字組裝
+   訂單文字組裝 / 加總
 =========================== */
 function buildOrderText(cart){
   // 人類可讀，落到 Sheet 一格文字
@@ -231,9 +241,52 @@ function buildOrderText(cart){
     return lines.join("\n");
   }).join("\n\n");
 }
-
-function calcTotal(cart){
+function calcTotalAmt(cart){
   return cart.reduce((s,it)=> s + Number(it.total||0), 0);
+}
+function calcTotalQty(cart){
+  return cart.reduce((s,it)=> s + Number(it.qty||0), 0);
+}
+
+/* ===========================
+   訂單編號 / 時間
+=========================== */
+function pad2(n){ return String(n).padStart(2,"0"); }
+function makeOrderId(){
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+  const rand = Math.random().toString(36).slice(2,6).toUpperCase();
+  return `WEB${stamp}-${rand}`;
+}
+function formatOrderTime(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+
+/* ===========================
+   送出到 Google Form（no-cors）
+=========================== */
+async function submitToGoogleForm(payload){
+  const params = new URLSearchParams();
+
+  params.set(`entry.${ENTRY.order_id}`, payload.order_id);
+  params.set(`entry.${ENTRY.order_time}`, payload.order_time);
+  params.set(`entry.${ENTRY.items}`, payload.items);
+  params.set(`entry.${ENTRY.total_qty}`, String(payload.total_qty));
+  params.set(`entry.${ENTRY.total_amt}`, String(payload.total_amt));
+
+  params.set(`entry.${ENTRY.name}`, payload.name);
+  params.set(`entry.${ENTRY.phone}`, payload.phone);
+  params.set(`entry.${ENTRY.store711}`, payload.store711);
+  params.set(`entry.${ENTRY.lineid}`, payload.lineid);
+  params.set(`entry.${ENTRY.note}`, payload.note || "");
+
+  await fetch(FORM_POST_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+    body: params.toString()
+  });
 }
 
 /* ===========================
@@ -253,7 +306,7 @@ function render(){
     return;
   }
 
-  let totalAll = calcTotal(cart);
+  const totalAll = calcTotalAmt(cart);
 
   // cart list card
   const cartCard = document.createElement("div");
@@ -292,9 +345,7 @@ function render(){
 
   const totalBox=document.createElement("div");
   totalBox.className="totalBox";
-  totalBox.innerHTML=`
-    <div class="totalBig">總金額：${money(totalAll)}</div>
-  `;
+  totalBox.innerHTML=`<div class="totalBig">總金額：${money(totalAll)}</div>`;
   cartCard.appendChild(totalBox);
 
   area.appendChild(cartCard);
@@ -320,13 +371,13 @@ function render(){
     </div>
 
     <div class="field">
-      <label>7-11門市資訊 *</label>
-      <input id="f_addr" placeholder="超商店號 / 門市名稱" />
+      <label>7-11 門市資訊 *</label>
+      <input id="f_store711" placeholder="超商店號 / 門市名稱" />
     </div>
 
     <div class="field">
       <label>LINE ID *</label>
-      <input id="f_name" placeholder="用於核單及售後" />
+      <input id="f_lineid" placeholder="用於核單及售後" />
     </div>
 
     <div class="field">
@@ -339,7 +390,7 @@ function render(){
     <button class="btn" id="btnSubmit">送出訂單</button>
     <div class="note">
       提示：送出後會產生訂單編號並清空購物車。<br>
-      若有任何問題，歡迎加入官方LINE諮詢。
+      你可以在 Google Sheet（表單回應）中看到「項目」與「總金額」。
     </div>
   `;
   area.appendChild(checkoutCard);
@@ -371,31 +422,19 @@ function render(){
     });
   });
 
-  // preview
-  const preview = document.getElementById("preview");
-  const previewTotal = document.getElementById("previewTotal");
-  preview.value = buildOrderText(cart);
-  previewTotal.textContent = money(calcTotal(cart));
-
   // submit
   document.getElementById("btnSubmit").addEventListener("click", async ()=>{
-    const name  = (document.getElementById("f_name").value||"").trim();
-    const email = (document.getElementById("f_email").value||"").trim();
-    const phone = (document.getElementById("f_phone").value||"").trim();
-    const ship  = (document.getElementById("f_ship").value||"").trim();
-    const addr  = (document.getElementById("f_addr").value||"").trim();
-    const note  = (document.getElementById("f_note").value||"").trim();
+    const name    = (document.getElementById("f_name").value||"").trim();
+    const phone   = (document.getElementById("f_phone").value||"").trim();
+    const store711= (document.getElementById("f_store711").value||"").trim();
+    const lineid  = (document.getElementById("f_lineid").value||"").trim();
+    const note    = (document.getElementById("f_note").value||"").trim();
 
     const msg = document.getElementById("msg");
     msg.innerHTML = "";
 
-    if(!name || !email){
-      msg.innerHTML = `<div class="error">請填寫「姓名」與「Email」。</div>`;
-      return;
-    }
-
-    if(API_TOKEN === "CHANGE_ME_TO_MATCH_YOUR_SCRIPT_TOKEN"){
-      msg.innerHTML = `<div class="error">cart.html 尚未設定 API_TOKEN（需與 Apps Script 的 API_TOKEN 相同）。</div>`;
+    if(!name || !phone || !store711 || !lineid){
+      msg.innerHTML = `<div class="error">請填寫：姓名、電話、7-11 門市、LINE ID。</div>`;
       return;
     }
 
@@ -405,20 +444,20 @@ function render(){
       return;
     }
 
+    const order_id = makeOrderId();
+    const order_time = formatOrderTime();
+
     const payload = {
-      token: API_TOKEN,
-      customer_name: name,
-      customer_email: email,
-      customer_phone: phone,
-      shipping_method: ship,
-      shipping_address: addr,
-      note: note,
-      order_text: buildOrderText(cartNow),
-      total: calcTotal(cartNow),
-      order_json: {
-        items: cartNow,
-        currency: "TWD"
-      }
+      order_id,
+      order_time,
+      items: buildOrderText(cartNow),
+      total_qty: calcTotalQty(cartNow),
+      total_amt: calcTotalAmt(cartNow),
+      name,
+      phone,
+      store711,
+      lineid,
+      note
     };
 
     const btn = document.getElementById("btnSubmit");
@@ -426,33 +465,14 @@ function render(){
     btn.textContent = "送出中…";
 
     try{
-     const res = await fetch(ORDERS_API, {
-      method: "POST",
-      // ✅ 用 text/plain 避免 CORS preflight
-      headers: { "Content-Type":"text/plain;charset=utf-8" },
-      body: JSON.stringify(payload)
-      });
-
-    // 有些情況下 res.json() 會因為回應格式/代理被改寫而失敗
-    const text = await res.text();
-    let data = null;
-    try { data = JSON.parse(text); } catch(e){ data = null; }
-
-    if(!data || !data.ok){
-    throw new Error((data && data.error) ? data.error : ("送出失敗，回應：" + text));
-    }
-
-
-      if(!data || !data.ok){
-        throw new Error(data?.error || "送出失敗（未知錯誤）");
-      }
+      await submitToGoogleForm(payload);
 
       clearCart();
-      msg.innerHTML = `<div class="success">✅ 已送出！你的訂單編號：<b>${data.order_id}</b><br>資料已寫入 Google Sheet（Orders）。</div>`;
+      msg.innerHTML = `<div class="success">✅ 已送出！你的訂單編號：<b>${order_id}</b><br>資料已寫入 Google Sheet（表單回應）。</div>`;
       render(); // 會變空購物車畫面
 
     }catch(err){
-      msg.innerHTML = `<div class="error">❌ 送出失敗：${String(err.message || err)}<br>請稍後再試，或檢查 Apps Script 權限 / API_TOKEN。</div>`;
+      msg.innerHTML = `<div class="error">❌ 送出失敗：${String(err.message || err)}<br>請稍後再試。</div>`;
       btn.disabled = false;
       btn.textContent = "送出訂單";
     }
@@ -464,3 +484,4 @@ render();
 
 </body>
 </html>
+
