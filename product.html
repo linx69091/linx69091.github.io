@@ -33,9 +33,7 @@ a{color:inherit; text-decoration:none}
   flex-wrap:wrap;
   margin-bottom:12px;
 }
-.top a{
-  font-weight:700;
-}
+.top a{ font-weight:700; }
 .layout{
   display:grid;
   grid-template-columns: 1.6fr 1fr;
@@ -120,6 +118,7 @@ h1{
   color:var(--muted);
   font-size:14px;
   line-height:1.55;
+  white-space:pre-line; /* 讓備註/說明保留換行 */
 }
 .priceHeader{
   display:flex;
@@ -189,6 +188,7 @@ select:focus, input[type="number"]:focus{
   color:var(--muted);
   font-size:13px;
   line-height:1.55;
+  white-space:pre-line;
 }
 .strike{
   text-decoration:line-through;
@@ -205,8 +205,8 @@ select:focus, input[type="number"]:focus{
 <body>
 <div class="wrap">
   <div class="top">
-    <a href="/products.html">← 回商品列表 / 商品詳情</a>
-    <a href="/cart.html">前往購物車 →</a>
+    <a href="./products.html">← 回商品列表</a>
+    <a href="./cart.html">前往購物車 →</a>
   </div>
 
   <div class="layout">
@@ -261,36 +261,24 @@ select:focus, input[type="number"]:focus{
 </div>
 
 <script>
-/* ====== 設定 ====== */
-const SHEET_ID="1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
-const SHEET_PRODUCTS="Products";
-/* ================= */
+/* ====== 設定：跟 products.html 一致（opensheet） ====== */
+const SHEET_ID = "1CFUndaTaa_idLh82JxHp6AXCWPTAUFM8AzGW9NIryIA";
+const BASE = `https://opensheet.elk.sh/${SHEET_ID}`;
+const ENDPOINT_PRODUCTS = BASE + "/Products";
+/* ================================================ */
 
-function gvizUrl(name){
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(name)}&tqx=out:json`;
-}
-async function fetchSheet(name){
-  const r = await fetch(gvizUrl(name), { cache:"no-store" });
-  const t = await r.text();
-  const j = JSON.parse(t.substring(t.indexOf("{"), t.lastIndexOf("}")+1));
-  const cols = j.table.cols.map(c=>c.label);
-  return j.table.rows.map(row=>{
-    const o = {};
-    row.c.forEach((cell,i)=> o[cols[i]] = cell ? cell.v : "");
-    return o;
-  });
-}
 function escapeHtml(s){
-  return String(s)
+  return String(s ?? "")
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;");
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
 }
-/* ✅ enabled 容錯：勾選框 true / 字串 TRUE 都算上架 */
-function isEnabled(v){
-  return v === true || String(v).toUpperCase().trim() === "TRUE";
-}
+function safeText(v){ return String(v ?? "").trim(); }
+function isTrue(v){ return String(v ?? "").trim().toUpperCase() === "TRUE"; }
+
+/* 你原本的 status 機制保留，但 Products 沒填就當可購買 */
 function normStatus(v){
   return String(v || "").trim() || "in_stock";
 }
@@ -355,6 +343,11 @@ function money(n){
   return `NT$ ${Number(n||0)}`;
 }
 
+async function fetchProducts(){
+  const r = await fetch(ENDPOINT_PRODUCTS, { cache:"no-store" });
+  return await r.json();
+}
+
 (async function init(){
   const sku = getParam("sku");
   const hint = document.getElementById("hint");
@@ -369,30 +362,49 @@ function money(n){
     return;
   }
 
-  const products = await fetchSheet(SHEET_PRODUCTS);
-
-  // 同 sku 可能多列（如果你未來做不同版本/規格列），先挑第一筆可用的顯示資料
-  const candidates = products
-    .filter(p => String(p.sku).trim() === String(sku).trim())
-    .filter(p => isEnabled(p.enabled))
-    .filter(p => normStatus(p.status) !== "hidden");
-
-  if(!candidates.length){
+  let rows = [];
+  try{
+    rows = await fetchProducts();
+  }catch(e){
     hint.style.display="block";
-    hint.textContent="找不到商品或未上架（enabled 需為 TRUE/勾選）。";
+    hint.textContent="讀取商品資料失敗（Products）。請確認表單已公開或 opensheet 可讀。";
     return;
   }
 
-  // 目前用第一筆作為主商品資訊
+  // 對齊 products.html 的欄位命名
+  const products = rows.map(r => ({
+    enabled: r.enabled,
+    sku: safeText(r.sku),
+    name: safeText(r.name),
+    category_path: safeText(r.category_path),
+    spec: safeText(r.spec),
+    options: safeText(r.options),
+    note: safeText(r.note),
+    price: Number(r.price || 0),
+    price_override: Number(r.price_override || 0),
+    image_url: safeText(r.image_url || r.image || ""),
+    status: safeText(r.status) // 可能不存在，保留兼容
+  }));
+
+  const candidates = products
+    .filter(p => safeText(p.sku) === safeText(sku))
+    .filter(p => isTrue(p.enabled));
+
+  if(!candidates.length){
+    hint.style.display="block";
+    hint.textContent="找不到商品或未上架（enabled 需為 TRUE）。";
+    return;
+  }
+
   const p = candidates[0];
 
-  // --- 基礎價：特價優先 ---
+  // --- 基礎價：特價優先（跟 products.html 同一套） ---
   const baseOriginal = Number(p.price || 0);
   const baseSpecial = Number(p.price_override || 0);
   const hasSpecial = !!p.price_override && !Number.isNaN(baseSpecial) && baseSpecial > 0;
   const base = hasSpecial ? baseSpecial : baseOriginal;
 
-  // --- 右側 options ---
+  // --- options ---
   const groups = parseOptions(p.options || "");
 
   // Render left
@@ -403,7 +415,7 @@ function money(n){
 
   const hero = document.getElementById("hero");
   if(p.image_url){
-    hero.innerHTML = `<img src="${p.image_url}" alt="${escapeHtml(p.name||"")}">`;
+    hero.innerHTML = `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name||"")}">`;
   }else{
     hero.textContent = "無圖片";
   }
@@ -413,7 +425,7 @@ function money(n){
   badges.innerHTML = `
     <span class="badge">${escapeHtml("編號：" + (p.sku || ""))}</span>
     <span class="badge">${escapeHtml("分類：" + (p.category_path || "—"))}</span>
-    <span class="badge ${statusClass(st)}">${statusLabel(st)}</span>
+    <span class="badge ${statusClass(st)}">${escapeHtml(statusLabel(st))}</span>
   `;
 
   // Render options area
@@ -455,7 +467,6 @@ function money(n){
   }
 
   function buildOptionText(){
-    // 用於購物車存文字
     if(!selects.length) return "";
     return selects.map(s=>{
       const label = s.el.options[s.el.selectedIndex]?.textContent || "";
@@ -471,7 +482,6 @@ function money(n){
 
     priceBig.textContent = money(total);
 
-    // 中文顯示：特價
     if(hasSpecial){
       priceSummary.innerHTML = `
         <div class="strike">原價 ${money(baseOriginal)}</div>
@@ -485,7 +495,6 @@ function money(n){
       `;
     }
 
-    // sold_out：禁用按鈕
     const sold = st === "sold_out";
     document.getElementById("btnAdd").disabled = sold;
     document.getElementById("btnAddGo").disabled = sold;
@@ -493,11 +502,9 @@ function money(n){
     document.getElementById("btnAddGo").classList.toggle("disabled", sold);
   }
 
-  // events
   for(const s of selects) s.el.addEventListener("change", renderPrice);
   qtyEl.addEventListener("input", renderPrice);
 
-  // add cart
   function addToCart(){
     const qty = Math.max(1, Number(qtyEl.value || 1));
     const optDelta = calcOptionDelta();
@@ -509,7 +516,6 @@ function money(n){
       category: String(p.category_path || ""),
       spec: String(p.spec || ""),
       image_url: String(p.image_url || ""),
-      // 價格資訊
       price_original: baseOriginal,
       price_special: hasSpecial ? baseSpecial : "",
       base_price_used: base,
@@ -517,9 +523,7 @@ function money(n){
       unit_price: unitPrice,
       qty,
       total: unitPrice * qty,
-      // 人類可讀選項
       options_text: buildOptionText(),
-      // 狀態（可留作表單輸出）
       status: st
     };
 
@@ -531,12 +535,10 @@ function money(n){
     hint.textContent = `已加入購物車：${item.name}（${qty} 件）`;
   }
 
-  document.getElementById("btnAdd").addEventListener("click", ()=>{
-    addToCart();
-  });
+  document.getElementById("btnAdd").addEventListener("click", addToCart);
   document.getElementById("btnAddGo").addEventListener("click", ()=>{
     addToCart();
-    location.href = "/cart.html";
+    location.href = "./cart.html";
   });
 
   renderPrice();
